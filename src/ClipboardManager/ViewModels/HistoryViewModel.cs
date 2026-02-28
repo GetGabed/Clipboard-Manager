@@ -8,10 +8,11 @@ using ClipboardManager.Services;
 
 namespace ClipboardManager.ViewModels;
 
-public class HistoryViewModel : BaseViewModel
+public class HistoryViewModel : BaseViewModel, IDisposable
 {
     private readonly IClipboardStorageService _storage;
     private readonly ClipboardMonitorService _monitor;
+    private bool _disposed;
 
     private string _searchText     = string.Empty;
     private ClipboardItem? _selectedItem;
@@ -246,6 +247,14 @@ public class HistoryViewModel : BaseViewModel
         {
             RefreshFilter();
         });
+    }
+
+    // ── IDisposable ───────────────────────────────────────────────────────
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+        _storage.ItemAdded -= OnItemAdded;
     }
 }
 

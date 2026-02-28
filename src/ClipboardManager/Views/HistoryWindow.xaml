@@ -70,13 +70,15 @@
                         <ToggleButton IsChecked="{Binding ShowPinnedOnly}"
                                       Style="{StaticResource IconToggleButton}"
                                       Padding="6,3" Margin="0,0,6,0"
-                                      ToolTip="Show pinned items only">
+                                      ToolTip="Show pinned items only"
+                                      AutomationProperties.Name="Show pinned only">
                             <TextBlock Text="★" FontSize="14" Foreground="#FFFFC107"/>
                         </ToggleButton>
                         <Button Style="{StaticResource IconButton}"
                                 Click="CloseButton_Click"
                                 Background="Transparent" Width="28" Height="28"
-                                ToolTip="Close (Esc)">
+                                ToolTip="Close (Esc)"
+                                AutomationProperties.Name="Close">
                             <TextBlock Text="✕" Foreground="White" FontSize="13"
                                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Button>
@@ -92,7 +94,10 @@
                            Panel.ZIndex="1"/>
                 <TextBox Style="{StaticResource SearchBox}"
                          Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-                         x:Name="SearchTextBox"/>
+                         x:Name="SearchTextBox"
+                         TabIndex="0"
+                         AutomationProperties.Name="Search clipboard history"
+                         AutomationProperties.HelpText="Type to filter clipboard history items"/>
                 <!-- Clear (✕) button — visible when search box has text -->
                 <Button Style="{StaticResource IconButton}"
                         HorizontalAlignment="Right" Margin="0,0,6,0"
@@ -118,12 +123,63 @@
                          ItemsSource="{Binding FilteredItems}"
                          SelectedItem="{Binding SelectedItem}"
                          x:Name="ItemsListBox"
+                         TabIndex="1"
                          MouseDoubleClick="ItemsListBox_MouseDoubleClick"
+                         PreviewMouseRightButtonDown="ItemsListBox_PreviewMouseRightButtonDown"
                          ScrollViewer.VerticalScrollBarVisibility="Auto"
                          KeyDown="ItemsListBox_KeyDown">
                     <ListBox.ItemTemplate>
                         <DataTemplate DataType="{x:Type models:ClipboardItem}">
-                            <Grid>
+                            <!-- Tag carries the ViewModel so the ContextMenu can reach its commands -->
+                            <Grid Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=ListBox}}">
+                                <Grid.ContextMenu>
+                                    <ContextMenu>
+                                        <MenuItem Header="📋 Copy"
+                                                  Command="{Binding PlacementTarget.Tag.CopyItemCommand,
+                                                            RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                  CommandParameter="{Binding PlacementTarget.DataContext,
+                                                            RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
+                                        <MenuItem Header="📌 Pin / Unpin"
+                                                  Command="{Binding PlacementTarget.Tag.PinSelectedCommand,
+                                                            RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
+                                        <Separator/>
+                                        <!-- Transform — only for text items -->
+                                        <MenuItem Header="🔡 Transform"
+                                                  Click="ContextMenuTransform_Click">
+                                            <MenuItem.Style>
+                                                <Style TargetType="MenuItem">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger
+                                                            Binding="{Binding PlacementTarget.Tag.SelectedItemIsText,
+                                                                      RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                            Value="True">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </MenuItem.Style>
+                                        </MenuItem>
+                                        <Separator>
+                                            <Separator.Style>
+                                                <Style TargetType="Separator">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger
+                                                            Binding="{Binding PlacementTarget.Tag.SelectedItemIsText,
+                                                                      RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                            Value="True">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Separator.Style>
+                                        </Separator>
+                                        <MenuItem Header="🗑 Delete"
+                                                  Command="{Binding PlacementTarget.Tag.DeleteSelectedCommand,
+                                                            RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
+                                    </ContextMenu>
+                                </Grid.ContextMenu>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto"/>  <!-- pin star -->
                                     <ColumnDefinition Width="Auto"/>  <!-- image thumbnail -->
@@ -337,21 +393,27 @@
                                 Padding="8,4" FontFamily="Segoe UI" FontSize="12"
                                 Margin="0,0,4,0"
                                 Foreground="{StaticResource TextPrimaryBrush}"
-                                ToolTip="Pin / Unpin (P)"/>
+                                ToolTip="Pin / Unpin (P)"
+                                TabIndex="2"
+                                AutomationProperties.Name="Pin or unpin selected item"/>
                         <Button Content="🗑 Delete"
                                 Style="{StaticResource IconButton}"
                                 Command="{Binding DeleteSelectedCommand}"
                                 Padding="8,4" FontFamily="Segoe UI" FontSize="12"
                                 Margin="0,0,4,0"
                                 Foreground="{StaticResource TextPrimaryBrush}"
-                                ToolTip="Delete (Del)"/>
+                                ToolTip="Delete (Del)"
+                                TabIndex="3"
+                                AutomationProperties.Name="Delete selected item"/>
                         <Button Content="🧹 Clear All"
                                 Style="{StaticResource IconButton}"
                                 Command="{Binding ClearHistoryCommand}"
                                 Padding="8,4" FontFamily="Segoe UI" FontSize="12"
                                 Margin="0,0,4,0"
                                 Foreground="{StaticResource DangerBrush}"
-                                ToolTip="Clear all unpinned history"/>
+                                ToolTip="Clear all unpinned history"
+                                TabIndex="4"
+                                AutomationProperties.Name="Clear all unpinned history"/>
                         <!-- Transform: text items only -->
                         <Button x:Name="TransformButton"
                                 Content="🔡 Transform"
@@ -389,6 +451,8 @@
                                 Command="{Binding CopySelectedCommand}"
                                 HorizontalAlignment="Right"
                                 Padding="16,6"
+                                TabIndex="6"
+                                AutomationProperties.Name="Copy selected item to clipboard"
                                 ToolTip="Copy selected item to clipboard (Enter) · Esc to close"/>
                     </StackPanel>
                 </Grid>

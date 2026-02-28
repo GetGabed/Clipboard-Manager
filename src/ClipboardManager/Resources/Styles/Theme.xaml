@@ -5,6 +5,27 @@
         <ResourceDictionary Source="Colors.xaml"/>
     </ResourceDictionary.MergedDictionaries>
 
+    <!-- ── Shared focus ring (keyboard navigation) ─────────────────── -->
+    <Style x:Key="FocusRing" TargetType="Control">
+        <Setter Property="FocusVisualStyle">
+            <Setter.Value>
+                <Style>
+                    <Setter Property="Control.Template">
+                        <Setter.Value>
+                            <ControlTemplate>
+                                <Rectangle Margin="-2"
+                                           StrokeThickness="2"
+                                           Stroke="{StaticResource PrimaryBrush}"
+                                           StrokeDashArray="2 1"
+                                           RadiusX="5" RadiusY="5"/>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- ── Typography ─────────────────────────────────────────── -->
     <Style x:Key="HeadingText" TargetType="TextBlock">
         <Setter Property="FontFamily"  Value="Segoe UI"/>
@@ -37,6 +58,22 @@
         <Setter Property="FontSize"     Value="13"/>
         <Setter Property="FontWeight"   Value="SemiBold"/>
         <Setter Property="Cursor"       Value="Hand"/>
+        <Setter Property="FocusVisualStyle">
+            <Setter.Value>
+                <Style>
+                    <Setter Property="Control.Template">
+                        <Setter.Value>
+                            <ControlTemplate>
+                                <Rectangle Margin="-2" StrokeThickness="2"
+                                           Stroke="{StaticResource PrimaryBrush}"
+                                           StrokeDashArray="2 1"
+                                           RadiusX="5" RadiusY="5"/>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+            </Setter.Value>
+        </Setter>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
@@ -69,6 +106,22 @@
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="Padding"         Value="6"/>
         <Setter Property="Cursor"          Value="Hand"/>
+        <Setter Property="FocusVisualStyle">
+            <Setter.Value>
+                <Style>
+                    <Setter Property="Control.Template">
+                        <Setter.Value>
+                            <ControlTemplate>
+                                <Rectangle Margin="-2" StrokeThickness="2"
+                                           Stroke="{StaticResource PrimaryBrush}"
+                                           StrokeDashArray="2 1"
+                                           RadiusX="5" RadiusY="5"/>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+            </Setter.Value>
+        </Setter>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">

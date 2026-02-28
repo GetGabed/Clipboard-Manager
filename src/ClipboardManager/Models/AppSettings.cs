@@ -25,6 +25,12 @@ public class AppSettings
 
     [JsonProperty("monitorInterval")]
     public int MonitorIntervalMs { get; set; } = 200;
+
+    [JsonProperty("historyWindowWidth")]
+    public double HistoryWindowWidth { get; set; } = 480;
+
+    [JsonProperty("historyWindowHeight")]
+    public double HistoryWindowHeight { get; set; } = 600;
 }
 
 public class HotkeyConfig

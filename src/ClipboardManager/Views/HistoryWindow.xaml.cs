@@ -1,11 +1,13 @@
 using System.Runtime.InteropServices;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using ClipboardManager.Models;
+using ClipboardManager.Services;
 using ClipboardManager.ViewModels;
 
 namespace ClipboardManager.Views;
@@ -46,14 +48,21 @@ public partial class HistoryWindow : Window
 
     // ── Toast timer ───────────────────────────────────────────────────────
     private readonly DispatcherTimer _toastTimer;
+    private readonly SettingsService _settingsService;
 
     // ── ViewModel accessor ────────────────────────────────────────────────
     public HistoryViewModel ViewModel => (HistoryViewModel)DataContext;
 
-    public HistoryWindow(HistoryViewModel viewModel)
+    public HistoryWindow(HistoryViewModel viewModel, SettingsService settingsService)
     {
         InitializeComponent();
         DataContext = viewModel;
+        _settingsService = settingsService;
+
+        // Restore last saved window size
+        var s = settingsService.Current;
+        if (s.HistoryWindowWidth  >= MinWidth)  Width  = s.HistoryWindowWidth;
+        if (s.HistoryWindowHeight >= MinHeight) Height = s.HistoryWindowHeight;
 
         // Toast dismiss timer (fires once after 700 ms)
         _toastTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(700) };
@@ -66,6 +75,13 @@ public partial class HistoryWindow : Window
         Deactivated += (_, _) => HideWithFade();
         Loaded      += (_, _) => FocusSearch();
         KeyDown     += OnWindowKeyDown;
+
+        // Persist window size whenever the user resizes
+        SizeChanged += (_, _) =>
+        {
+            _settingsService.Current.HistoryWindowWidth  = Width;
+            _settingsService.Current.HistoryWindowHeight = Height;
+        };
     }
 
     // ── Focus helpers ─────────────────────────────────────────────────────
@@ -167,6 +183,27 @@ public partial class HistoryWindow : Window
         if (ViewModel.SelectedItem is not null && ViewModel.CopySelectedCommand.CanExecute(null))
             ViewModel.CopySelectedCommand.Execute(null);
     }
+
+    /// <summary>
+    /// Select the item under the right-click before the context menu opens
+    /// so that Pin / Delete / Transform commands operate on the correct item.
+    /// </summary>
+    private void ItemsListBox_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        var dep = e.OriginalSource as DependencyObject;
+        while (dep is not null && dep is not ListBoxItem)
+            dep = VisualTreeHelper.GetParent(dep);
+
+        if (dep is ListBoxItem lbi)
+        {
+            lbi.IsSelected = true;
+            ItemsListBox.Focus();
+        }
+    }
+
+    /// <summary>Opens the Transform popup from the right-click context menu.</summary>
+    private void ContextMenuTransform_Click(object sender, RoutedEventArgs e)
+        => TransformPopup.IsOpen = true;
 
     private void ItemsListBox_KeyDown(object sender, KeyEventArgs e)
     {

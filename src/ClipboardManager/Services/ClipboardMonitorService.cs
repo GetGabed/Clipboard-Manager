@@ -156,13 +156,22 @@ public class ClipboardMonitorService : IDisposable
     private static BitmapSource CreateThumbnail(BitmapSource source)
     {
         const int maxSize = 256;
+        BitmapSource result;
         if (source.PixelWidth <= maxSize && source.PixelHeight <= maxSize)
-            return source;
-
-        double scale = Math.Min((double)maxSize / source.PixelWidth,
-                                (double)maxSize / source.PixelHeight);
-        return new TransformedBitmap(source,
-            new System.Windows.Media.ScaleTransform(scale, scale));
+        {
+            result = source;
+        }
+        else
+        {
+            double scale = Math.Min((double)maxSize / source.PixelWidth,
+                                    (double)maxSize / source.PixelHeight);
+            result = new TransformedBitmap(source,
+                new System.Windows.Media.ScaleTransform(scale, scale));
+        }
+        // Freeze the bitmap so it can be safely shared across threads and
+        // avoids layout cycle issues in WPF.
+        if (result.CanFreeze) result.Freeze();
+        return result;
     }
 
     /// <summary>

@@ -43,7 +43,7 @@ public class ClipboardStorageService : IClipboardStorageService
             // Check for a duplicate anywhere in history (not just the most-recent item).
             // If found, promote the existing entry to the top — e.g. copy A → B → A again
             // should move the original A to the top rather than creating a second A.
-            var existing = _buffer.ToList().FirstOrDefault(i => item.IsDuplicateOf(i));
+            var existing = _buffer.FirstOrDefault(i => item.IsDuplicateOf(i));
             if (existing is not null)
             {
                 _buffer.Promote(existing);
@@ -73,7 +73,7 @@ public class ClipboardStorageService : IClipboardStorageService
     {
         lock (_lock)
         {
-            var toRemove = _buffer.ToList().Where(i => !i.IsPinned).ToList();
+            var toRemove = _buffer.Where(i => !i.IsPinned).ToList();
             foreach (var item in toRemove)
                 _buffer.Remove(item);
         }

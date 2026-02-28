@@ -1,4 +1,5 @@
-﻿using System.Drawing;
+﻿using System.Diagnostics;
+using System.Drawing;
 using System.Windows;
 using System.Windows.Interop;
 using ClipboardManager.Services;
@@ -31,6 +32,8 @@ public partial class App : Application
     {
         base.OnStartup(e);
 
+        var sw = Stopwatch.StartNew();
+
         // Enforce single instance
         if (!EnsureSingleInstance()) { Shutdown(); return; }
 
@@ -49,11 +52,19 @@ public partial class App : Application
                 _storageService.Add(item);
         }
 
+        // Apply dark mode (explicit setting OR system high-contrast)
+        if (_settingsService.Current.DarkMode || SystemParameters.HighContrast)
+            ApplyDarkMode();
+
         // Build tray icon
         _trayIcon = (TaskbarIcon)FindResource("TrayIcon");
         _trayIcon.Icon        = LoadAppIcon();
         _trayIcon.ContextMenu = BuildContextMenu();
         _trayIcon.TrayLeftMouseUp += (_, _) => ToggleHistoryWindow();
+        UpdateTrayTooltip();
+
+        // Keep tray tooltip in sync with clipboard count
+        _storageService.ItemAdded += (_, _) => UpdateTrayTooltip();
 
         // Start clipboard monitoring (requires UI thread dispatcher)
         _monitor.Attach();
@@ -62,6 +73,25 @@ public partial class App : Application
         var hotkeyHwnd = CreateHiddenHwndSource("HotkeyHost");
         _hotkeyService.Attach(hotkeyHwnd);
         _hotkeyService.HotkeyPressed += (_, _) => ToggleHistoryWindow();
+
+        sw.Stop();
+        Debug.WriteLine($"[Startup] {sw.ElapsedMilliseconds} ms");
+    }
+
+    // ── Dark mode ─────────────────────────────────────────────────────────
+    private void ApplyDarkMode()
+    {
+        Resources.MergedDictionaries.Add(new ResourceDictionary
+        {
+            Source = new Uri("Resources/Styles/DarkColors.xaml", UriKind.Relative)
+        });
+    }
+
+    // ── Tray tooltip ──────────────────────────────────────────────────────
+    private void UpdateTrayTooltip()
+    {
+        var count = _storageService.Items.Count;
+        _trayIcon.ToolTipText = $"Clipboard Manager \u2014 {count} item{(count == 1 ? "" : "s")}";
     }
 
     // ── Single-instance guard ─────────────────────────────────────────────
@@ -85,7 +115,7 @@ public partial class App : Application
         if (_historyWindow is null)
         {
             var vm = new HistoryViewModel(_storageService, _monitor);
-            _historyWindow = new HistoryWindow(vm);
+            _historyWindow = new HistoryWindow(vm, _settingsService);
         }
 
         _historyWindow.ViewModel.RefreshFilter();
@@ -134,6 +164,7 @@ public partial class App : Application
         if (_settingsService.Current.PersistToDisk)
             _persistence.Save(_storageService.Items, _settingsService.Current.MaxHistoryItems);
         _settingsService.Save();
+        _historyWindow?.ViewModel.Dispose();
         _hotkeyService.Dispose();
         _monitor.Dispose();
         _trayIcon.Dispose();

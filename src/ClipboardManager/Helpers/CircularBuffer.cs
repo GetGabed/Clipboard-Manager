@@ -1,10 +1,12 @@
+using System.Collections;
+
 namespace ClipboardManager.Helpers;
 
 /// <summary>
 /// A fixed-capacity circular buffer.  When the buffer is full the oldest
 /// non-pinned item is evicted to make room for the newest one.
 /// </summary>
-public class CircularBuffer<T>
+public class CircularBuffer<T> : IEnumerable<T>
 {
     private int _capacity;
     private readonly LinkedList<T> _list = new();
@@ -34,6 +36,7 @@ public class CircularBuffer<T>
     public void Clear()               => _list.Clear();
     public List<T> ToList()           => new(_list);
     public IEnumerator<T> GetEnumerator() => _list.GetEnumerator();
+    System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => _list.GetEnumerator();
 
     /// <summary>
     /// Resizes the buffer capacity. If shrinking, oldest non-pinned items are
