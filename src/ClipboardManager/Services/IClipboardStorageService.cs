@@ -15,6 +15,12 @@ public interface IClipboardStorageService
     void Remove(ClipboardItem item);
     void Clear();
 
-    /// <summary>Puts the item back onto the system clipboard.</summary>
+    /// <summary>Removes all non-pinned items from the history.</summary>
+    void ClearUnpinned();
+
+    /// <summary>Puts the item back onto the system clipboard and promotes it to newest position.</summary>
     void SetAsCurrentClipboard(ClipboardItem item);
+
+    /// <summary>Moves <paramref name="item"/> to the top (newest slot) of the history buffer.</summary>
+    void Promote(ClipboardItem item);
 }

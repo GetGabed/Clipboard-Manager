@@ -36,6 +36,19 @@ public class CircularBuffer<T>
     public IEnumerator<T> GetEnumerator() => _list.GetEnumerator();
 
     /// <summary>
+    /// Moves <paramref name="item"/> to the newest end of the buffer without
+    /// changing the count or triggering eviction.  If the item is not present
+    /// this is a no-op.
+    /// </summary>
+    public void Promote(T item)
+    {
+        var node = _list.Find(item);
+        if (node is null) return;
+        _list.Remove(node);
+        _list.AddLast(item);
+    }
+
+    /// <summary>
     /// Evicts the oldest item in <see cref="_list"/> (front = oldest).
     /// Skips pinned items when T is <see cref="ClipboardManager.Models.ClipboardItem"/>.
     /// </summary>

@@ -16,9 +16,18 @@ public class ClipboardStorageService : IClipboardStorageService
 
     public event EventHandler<ClipboardItem>? ItemAdded;
 
+    /// <summary>All stored items, <em>newest first</em> (buffer insertion order reversed).</summary>
     public IReadOnlyList<ClipboardItem> Items
     {
-        get { lock (_lock) { return _buffer.ToList(); } }
+        get
+        {
+            lock (_lock)
+            {
+                var list = _buffer.ToList();
+                list.Reverse();   // back of buffer = newest → index 0
+                return list;
+            }
+        }
     }
 
     public ClipboardStorageService(int capacity = 200)
@@ -50,6 +59,21 @@ public class ClipboardStorageService : IClipboardStorageService
         lock (_lock) { _buffer.Clear(); }
     }
 
+    public void ClearUnpinned()
+    {
+        lock (_lock)
+        {
+            var toRemove = _buffer.ToList().Where(i => !i.IsPinned).ToList();
+            foreach (var item in toRemove)
+                _buffer.Remove(item);
+        }
+    }
+
+    public void Promote(ClipboardItem item)
+    {
+        lock (_lock) { _buffer.Promote(item); }
+    }
+
     public void SetAsCurrentClipboard(ClipboardItem item)
     {
         Application.Current.Dispatcher.Invoke(() =>
@@ -69,5 +93,10 @@ public class ClipboardStorageService : IClipboardStorageService
                     break;
             }
         });
+
+        // Promote the item to the newest slot so it appears at the top of
+        // history when the window is next refreshed (no duplicate created
+        // because SuppressNextCapture was called by the caller beforehand).
+        Promote(item);
     }
 }

@@ -1,5 +1,4 @@
 using System.Collections.ObjectModel;
-using System.Runtime.InteropServices;
 using System.Windows.Input;
 using ClipboardManager.Helpers;
 using ClipboardManager.Models;
@@ -72,15 +71,11 @@ public class HistoryViewModel : BaseViewModel
     private void PasteSelected()
     {
         if (SelectedItem is null) return;
+        // SuppressNextCapture MUST be called before SetAsCurrentClipboard so the
+        // WM_CLIPBOARDUPDATE triggered by setting the clipboard is ignored.
         _monitor.SuppressNextCapture();
-        _storage.SetAsCurrentClipboard(SelectedItem);
-        IsWindowVisible = false;
-
-        // Small delay so the window hides before the paste keystroke
-        Task.Delay(150).ContinueWith(_ =>
-        {
-            // Window is already hidden; the item is on the clipboard — nothing else needed.
-        });
+        _storage.SetAsCurrentClipboard(SelectedItem);  // also promotes item internally
+        RefreshFilter();  // show promoted item at top immediately
     }
 
     private void DeleteSelected()
@@ -101,8 +96,8 @@ public class HistoryViewModel : BaseViewModel
 
     private void ClearHistory()
     {
-        _storage.Clear();
-        FilteredItems.Clear();
+        _storage.ClearUnpinned();
+        RefreshFilter();
         SelectedItem = null;
         OnPropertyChanged(nameof(TotalCount));
     }
@@ -113,9 +108,10 @@ public class HistoryViewModel : BaseViewModel
         FilteredItems.Clear();
         var query = _searchText.Trim();
 
+        // Items is already newest-first; stable sort floats pinned to top
+        // while preserving insertion order (including post-promotion order).
         var source = _storage.Items
-            .OrderByDescending(i => i.IsPinned)
-            .ThenByDescending(i => i.CapturedAt);
+            .OrderByDescending(i => i.IsPinned);
 
         foreach (var item in source)
         {
