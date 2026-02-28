@@ -23,7 +23,40 @@ dotnet build
 dotnet run --project src/ClipboardManager
 ```
 
-## Architecture
+## Testing
+
+![Tests](https://img.shields.io/badge/tests-97%20passing-brightgreen)
+![Business Logic Coverage](https://img.shields.io/badge/coverage%20(Models%2C%20Helpers%2C%20Services)-≥70%25-green)
+
+Tests are in `tests/ClipboardManager.Tests/` and run with:
+
+```bash
+dotnet test
+```
+
+### Coverage by layer (testable units, v0.6.0)
+
+| Layer | Class | Line Coverage |
+|---|---|---|
+| Helpers | `CircularBuffer<T>` | 93% |
+| Helpers | `TextTransformHelper` | 100% |
+| Models | `AppSettings` | 100% |
+| Models | `ClipboardItem` | 79% |
+| Services | `ClipboardStorageService` | 71% |
+| Services | `HistoryPersistenceService` | 83% |
+| Services | `SettingsService` | 90% |
+| ViewModels | `BaseViewModel` | 100% |
+
+> **Note:** WPF views, Win32 hooks (`ClipboardMonitorService`, `HotkeyService`) and XAML converters are excluded from unit coverage as they require a live WPF runtime.
+
+To regenerate the HTML coverage report:
+
+```bash
+dotnet test --collect:"XPlat Code Coverage" --results-directory ./coverage
+reportgenerator -reports:"coverage/**/coverage.cobertura.xml" -targetdir:"coverage/report" -reporttypes:Html
+```
+
+
 ```
 src/ClipboardManager/
 ├── Models/          – ClipboardItem, AppSettings

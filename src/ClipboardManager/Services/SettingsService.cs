@@ -7,16 +7,28 @@ namespace ClipboardManager.Services;
 /// <summary>Loads and persists <see cref="AppSettings"/> to a JSON file.</summary>
 public class SettingsService
 {
-    private static readonly string SettingsDir =
+    private static readonly string DefaultSettingsDir =
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                      "ClipboardManager");
 
-    private static readonly string SettingsPath =
-        Path.Combine(SettingsDir, "settings.json");
+    private readonly string SettingsDir;
+    private readonly string SettingsPath;
 
     public AppSettings Current { get; private set; } = new();
 
-    public SettingsService() => Load();
+    /// <summary>Production constructor — uses %AppData%\ClipboardManager\settings.json.</summary>
+    public SettingsService() : this(DefaultSettingsDir) { }
+
+    /// <summary>
+    /// Testable constructor — uses the supplied directory so tests can
+    /// redirect reads/writes to a temp folder without touching AppData.
+    /// </summary>
+    internal SettingsService(string settingsDir)
+    {
+        SettingsDir  = settingsDir;
+        SettingsPath = Path.Combine(settingsDir, "settings.json");
+        Load();
+    }
 
     public void Load()
     {
