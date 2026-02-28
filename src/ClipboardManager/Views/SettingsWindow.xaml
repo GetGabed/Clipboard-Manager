@@ -6,7 +6,7 @@
         WindowStyle="SingleBorderWindow"
         ResizeMode="CanResizeWithGrip"
         ShowInTaskbar="True"
-        Background="{StaticResource SurfaceBrush}"
+        Background="{DynamicResource SurfaceBrush}"
         WindowStartupLocation="CenterScreen">
 
     <!--
@@ -14,7 +14,7 @@
         the runtime DarkColors.xaml override takes effect.
     -->
 
-    <Grid Margin="24">
+    <Grid Margin="24" TextElement.Foreground="{DynamicResource TextPrimaryBrush}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
