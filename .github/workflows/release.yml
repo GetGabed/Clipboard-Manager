@@ -1,0 +1,58 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Publish self-contained win-x64 EXE
+        run: |
+          dotnet publish src/ClipboardManager -c Release -r win-x64 --self-contained true `
+            /p:PublishSingleFile=true `
+            /p:EnableCompressionInSingleFile=true `
+            -o publish/win-x64
+
+      - name: Create portable ZIP
+        run: |
+          $tag = "${{ github.ref_name }}"
+          Compress-Archive -Path publish/win-x64/ClipboardManager.exe, README.md, LICENSE `
+            -DestinationPath "ClipboardManager-portable-$tag.zip"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "Clipboard Manager ${{ github.ref_name }}"
+          body: |
+            ## Clipboard Manager ${{ github.ref_name }}
+
+            ### Download
+            | File | Description |
+            |---|---|
+            | `ClipboardManager-portable-*.zip` | Portable — extract and run, no install needed |
+
+            ### Requirements
+            - Windows 10 / 11 (x64)
+            - No runtime required — self-contained single EXE
+
+            See [CHANGELOG](https://github.com/GetGabed/Clipboard-Manager/blob/main/README.md) for details.
+          files: |
+            ClipboardManager-portable-*.zip
+          draft: false
+          prerelease: false

@@ -1,40 +1,116 @@
 # Clipboard Manager
 
-A lightweight, high-performance Windows system tray application that captures and stores clipboard history.
+[![CI](https://github.com/GetGabed/Clipboard-Manager/actions/workflows/ci.yml/badge.svg)](https://github.com/GetGabed/Clipboard-Manager/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/GetGabed/Clipboard-Manager)](https://github.com/GetGabed/Clipboard-Manager/releases/latest)
+[![License](https://img.shields.io/github/license/GetGabed/Clipboard-Manager)](LICENSE)
+[![Tests](https://img.shields.io/badge/tests-97%20passing-brightgreen)](#testing)
+
+A lightweight, high-performance Windows system-tray application that captures and stores your clipboard history — text, images, and files.
+
+---
 
 ## Features
-- 📋 Captures text, image and file clipboard events automatically
-- 🔍 Instant fuzzy search across history
-- 📌 Pin favourite items to prevent eviction
-- ⌨️  Global hotkey `Ctrl+Shift+V` to summon/dismiss the history window
-- 🗑  Per-item delete + full clear
-- ⚙️  Settings: max items, start-with-Windows, dark mode, disk persistence
-- 🚀 Low footprint: target &lt;500 ms startup, &lt;50 MB RAM
 
-## Requirements
-- Windows 10 / 11
-- .NET 8.0 Runtime (or SDK for development)
+- 📋 **Auto-capture** — text, image, and file clipboard events recorded instantly
+- 🔍 **Instant search** — fuzzy-filter across the full history as you type
+- 📌 **Pin items** — prevent pinned entries from being evicted
+- 🔄 **Text transforms** — 14 one-click transforms (UPPER, lower, Title, URL-encode, Base64, …)
+- ⌨️ **Global hotkey** — `Ctrl+Shift+V` summons / dismisses the history window from anywhere
+- 🖱️ **Right-click context menu** — Copy / Pin / Transform / Delete without lifting your hands
+- 🌙 **Dark mode** — automatic (system High Contrast) or manual toggle in Settings
+- 🗑️ **Per-item delete** and bulk **Clear Unpinned**
+- ⚙️ **Settings** — max history size, start-with-Windows, dark mode, disk persistence, window size
+- 💾 **Optional persistence** — history survives restarts via `%APPDATA%\ClipboardManager`
+- 🚀 **Low footprint** — ~73 MB self-contained single EXE, targets < 500 ms startup
 
-## Building from source
-```bash
+---
+
+## Screenshots
+
+> _Screenshots live in [`docs/screenshots/`](docs/screenshots/).
+> Add `history-window-dark.png` and `demo.gif` there after capturing them._
+
+---
+
+## Download
+
+Grab the latest portable ZIP or installer from the [Releases](https://github.com/GetGabed/Clipboard-Manager/releases/latest) page.
+
+| Artifact | Description |
+|---|---|
+| `ClipboardManager-portable-vX.Y.Z.zip` | Extract anywhere and run — no install required |
+
+**Requirements:** Windows 10 / 11 (x64). No .NET runtime required — the EXE is self-contained.
+
+---
+
+## Keyboard Shortcuts
+
+| Shortcut | Action |
+|---|---|
+| `Ctrl + Shift + V` | Open / close the history window (global) |
+| `Tab` | Navigate: Search → List → Pin → Delete → Clear → Copy |
+| `Enter` | Copy the selected item to clipboard |
+| `Space` | Toggle full-size preview (image items) |
+| `Delete` | Delete the selected item |
+| `Escape` | Close the history window |
+| Right-click on item | Context menu: Copy / Pin-Unpin / Transform / Delete |
+
+---
+
+## Building from Source
+
+### Prerequisites
+
+| Tool | Version |
+|---|---|
+| Windows | 10 or 11 |
+| [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) | 8.0.x |
+| Git | any recent version |
+
+### Clone, build, and run
+
+```powershell
 git clone https://github.com/GetGabed/Clipboard-Manager.git
 cd Clipboard-Manager
+dotnet restore
 dotnet build
-dotnet run --project src/ClipboardManager
+dotnet run --project src\ClipboardManager
 ```
 
-## Testing
+### Run tests
 
-![Tests](https://img.shields.io/badge/tests-97%20passing-brightgreen)
-![Business Logic Coverage](https://img.shields.io/badge/coverage%20(Models%2C%20Helpers%2C%20Services)-≥70%25-green)
-
-Tests are in `tests/ClipboardManager.Tests/` and run with:
-
-```bash
+```powershell
 dotnet test
 ```
 
-### Coverage by layer (testable units, v0.6.0)
+### Publish a self-contained EXE
+
+```powershell
+dotnet publish src\ClipboardManager -c Release -r win-x64 --self-contained true `
+  /p:PublishSingleFile=true -o publish\win-x64
+```
+
+### Full release pipeline (tests → publish → portable ZIP)
+
+```powershell
+.\scripts\release.ps1
+# Optional flags:
+#   -SkipTests      skip dotnet test
+#   -SkipInstaller  skip Inno Setup step
+```
+
+---
+
+## Testing
+
+Tests are in `tests/ClipboardManager.Tests/` and run with:
+
+```powershell
+dotnet test
+```
+
+### Coverage by layer (testable units, v0.7.0)
 
 | Layer | Class | Line Coverage |
 |---|---|---|
@@ -47,24 +123,55 @@ dotnet test
 | Services | `SettingsService` | 90% |
 | ViewModels | `BaseViewModel` | 100% |
 
-> **Note:** WPF views, Win32 hooks (`ClipboardMonitorService`, `HotkeyService`) and XAML converters are excluded from unit coverage as they require a live WPF runtime.
+> **Note:** WPF views, Win32 hooks (`ClipboardMonitorService`, `HotkeyService`), and XAML converters are excluded from unit coverage — they require a live WPF runtime.
 
 To regenerate the HTML coverage report:
 
-```bash
+```powershell
 dotnet test --collect:"XPlat Code Coverage" --results-directory ./coverage
 reportgenerator -reports:"coverage/**/coverage.cobertura.xml" -targetdir:"coverage/report" -reporttypes:Html
 ```
 
+---
+
+## Project Structure
 
 ```
 src/ClipboardManager/
 ├── Models/          – ClipboardItem, AppSettings
 ├── ViewModels/      – HistoryViewModel, SettingsViewModel (MVVM)
 ├── Views/           – HistoryWindow, SettingsWindow (WPF)
-├── Services/        – ClipboardMonitorService, HotkeyService, SettingsService
-├── Helpers/         – RelayCommand, CircularBuffer, TextTransformHelper
-└── Resources/       – Styles (XAML), Icons
+├── Services/        – ClipboardMonitorService, HotkeyService, SettingsService,
+│                      HistoryPersistenceService
+├── Helpers/         – RelayCommand, CircularBuffer<T>, TextTransformHelper,
+│                      StartupHelper, TimestampConverter
+└── Resources/       – Styles (Theme.xaml, DarkColors.xaml), Icons
 tests/
-└── ClipboardManager.Tests/   – xUnit unit tests
+└── ClipboardManager.Tests/   – 97 xUnit unit tests
+installer/
+└── ClipboardManager.iss      – Inno Setup 6 installer script
+scripts/
+├── release.ps1               – full release pipeline
+└── build-portable.ps1        – builds portable ZIP only
 ```
+
+---
+
+## Contributing
+
+Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.
+
+Quick checklist:
+- Branch from `main` using `feature/`, `fix/`, or `chore/` prefix
+- `dotnet build -c Release` must produce zero warnings
+- All existing tests must pass; add tests for new logic where feasible
+- Update this README if your change affects user-visible behaviour
+
+For security issues see [SECURITY.md](SECURITY.md).  
+For feature ideas or bug reports use the [GitHub Issues](https://github.com/GetGabed/Clipboard-Manager/issues) templates.
+
+---
+
+## Licence
+
+[MIT](LICENSE) © Gabriel Dubois
