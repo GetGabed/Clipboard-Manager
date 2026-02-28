@@ -2,9 +2,9 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Settings – Clipboard Manager"
-        Width="420" Height="480"
+        Width="420" Height="520" MinHeight="360"
         WindowStyle="SingleBorderWindow"
-        ResizeMode="NoResize"
+        ResizeMode="CanResizeWithGrip"
         ShowInTaskbar="True"
         Background="{StaticResource SurfaceBrush}"
         WindowStartupLocation="CenterScreen">
@@ -25,7 +25,11 @@
                    FontSize="20" Margin="0,0,0,20"/>
 
         <!-- Settings form -->
-        <StackPanel Grid.Row="1">
+        <ScrollViewer Grid.Row="1"
+                      VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Disabled"
+                      Padding="0,0,4,0">
+        <StackPanel>
 
             <!-- Max history items -->
             <StackPanel Margin="0,0,0,16">
@@ -79,6 +83,7 @@
                         Foreground="{StaticResource PrimaryBrush}"/>
             </StackPanel>
         </StackPanel>
+        </ScrollViewer>
 
         <!-- Action buttons -->
         <StackPanel Grid.Row="2" Orientation="Horizontal"

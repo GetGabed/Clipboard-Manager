@@ -28,6 +28,12 @@ public class ClipboardItem
     /// <summary>Thumbnail for image items (not persisted to disk).</summary>
     public BitmapSource? ImageThumbnail { get; set; }
 
+    /// <summary>
+    /// MD5 hex hash of the image thumbnail pixel bytes (images) or null (other types).
+    /// Used to detect duplicate image captures before adding to history.
+    /// </summary>
+    public string? ContentHash { get; init; }
+
     /// <summary>Original pixel width of an image item (0 for non-image items).</summary>
     public int ImageWidth { get; set; }
 
@@ -80,6 +86,9 @@ public class ClipboardItem
                                              StringComparison.Ordinal),
             ClipboardContentType.Files => FilePaths is not null && other.FilePaths is not null
                                           && string.Join("|", FilePaths) == string.Join("|", other.FilePaths),
+            ClipboardContentType.Image => ContentHash is not null && other.ContentHash is not null
+                                          && string.Equals(ContentHash, other.ContentHash,
+                                                           StringComparison.Ordinal),
             _ => false
         };
     }

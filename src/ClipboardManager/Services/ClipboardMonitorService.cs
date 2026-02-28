@@ -1,6 +1,8 @@
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 using System.Windows;
 using System.Windows.Interop;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using ClipboardManager.Models;
 using System.Drawing;
@@ -95,12 +97,14 @@ public class ClipboardMonitorService : IDisposable
                 var img = Clipboard.GetImage();
                 if (img is not null)
                 {
+                    var thumb = CreateThumbnail(img);
                     _storage.Add(new ClipboardItem
                     {
                         ContentType    = ClipboardContentType.Image,
-                        ImageThumbnail = CreateThumbnail(img),
+                        ImageThumbnail = thumb,
                         ImageWidth     = img.PixelWidth,
-                        ImageHeight    = img.PixelHeight
+                        ImageHeight    = img.PixelHeight,
+                        ContentHash    = ComputeImageHash(thumb)
                     });
                 }
             }
@@ -122,6 +126,30 @@ public class ClipboardMonitorService : IDisposable
         {
             // Clipboard can be locked by other processes — log and continue
             System.Diagnostics.Debug.WriteLine($"[ClipboardMonitor] {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Computes an MD5 hex hash of the thumbnail's pixel bytes so duplicate
+    /// image captures can be detected the same way text duplicates are.
+    /// Returns null on any error (in which case no dedup happens for that item).
+    /// </summary>
+    private static string? ComputeImageHash(BitmapSource source)
+    {
+        try
+        {
+            // Normalise to a consistent pixel format before hashing
+            var converted = new FormatConvertedBitmap(
+                source, PixelFormats.Bgra32, null, 0);
+            int stride = converted.PixelWidth * 4;
+            var pixels = new byte[stride * converted.PixelHeight];
+            converted.CopyPixels(pixels, stride, 0);
+            var hash = MD5.HashData(pixels);
+            return Convert.ToHexString(hash);
+        }
+        catch
+        {
+            return null;
         }
     }
 
