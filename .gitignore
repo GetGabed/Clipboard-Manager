@@ -3,6 +3,7 @@ bin/
 obj/
 *.user
 .vs/
+.github/
 
 # Build outputs
 publish/

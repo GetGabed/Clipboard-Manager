@@ -68,7 +68,7 @@ public partial class App : Application
     {
         if (_historyWindow is { IsVisible: true })
         {
-            _historyWindow.Hide();
+            _historyWindow.HideWithFade();
             return;
         }
 

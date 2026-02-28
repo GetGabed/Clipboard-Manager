@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="clr-namespace:ClipboardManager.ViewModels"
         xmlns:models="clr-namespace:ClipboardManager.Models"
+        xmlns:helpers="clr-namespace:ClipboardManager.Helpers"
         Title="Clipboard Manager"
         Width="480" MinWidth="360"
         Height="600" MinHeight="300"
@@ -12,7 +13,8 @@
         ResizeMode="CanResizeWithGrip"
         ShowInTaskbar="False"
         Topmost="True"
-        Focusable="True">
+        Focusable="True"
+        Opacity="0">
 
     <Window.Resources>
         <ResourceDictionary>
@@ -20,6 +22,8 @@
                 <ResourceDictionary Source="/Resources/Styles/Theme.xaml"/>
             </ResourceDictionary.MergedDictionaries>
             <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+            <helpers:TimestampConverter      x:Key="TimestampConv"/>
+            <helpers:ZeroToVisibleConverter  x:Key="ZeroToVis"/>
         </ResourceDictionary>
     </Window.Resources>
 
@@ -36,7 +40,7 @@
                 <RowDefinition Height="Auto"/>  <!-- Header / drag bar -->
                 <RowDefinition Height="Auto"/>  <!-- Search bar -->
                 <RowDefinition Height="Auto"/>  <!-- Status bar -->
-                <RowDefinition Height="*"/>     <!-- List -->
+                <RowDefinition Height="*"/>     <!-- List (or empty state) -->
                 <RowDefinition Height="Auto"/>  <!-- Action bar -->
             </Grid.RowDefinitions>
 
@@ -54,7 +58,7 @@
                                    Foreground="White"/>
                     </StackPanel>
 
-                    <!-- Item count badge -->
+                    <!-- Item count badge (updates in real time via TotalCount) -->
                     <Border HorizontalAlignment="Center" VerticalAlignment="Center"
                             Background="#33FFFFFF" CornerRadius="10" Padding="8,2">
                         <TextBlock Foreground="White" FontSize="11" FontFamily="Segoe UI"
@@ -82,13 +86,13 @@
                 <TextBox Style="{StaticResource SearchBox}"
                          Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
                          x:Name="SearchTextBox"/>
-                <!-- Clear button -->
+                <!-- Clear (✕) button — visible when search box has text -->
                 <Button Style="{StaticResource IconButton}"
                         HorizontalAlignment="Right" Margin="0,0,6,0"
                         Command="{Binding ClearSearchCommand}"
-                        Visibility="{Binding SearchText.Length,
-                                     Converter={StaticResource BoolToVis}}"
-                        Width="24" Height="24" Panel.ZIndex="1">
+                        Visibility="{Binding HasSearchText, Converter={StaticResource BoolToVis}}"
+                        Width="24" Height="24" Panel.ZIndex="1"
+                        ToolTip="Clear search (Ctrl+A, Del)">
                     <TextBlock Text="✕" FontSize="10"
                                Foreground="{StaticResource TextSecondaryBrush}"/>
                 </Button>
@@ -98,51 +102,138 @@
             <TextBlock Grid.Row="2" Margin="14,2,14,4"
                        Style="{StaticResource SubtitleText}"
                        Text="{Binding FilteredItems.Count,
-                              StringFormat='Showing {0} result(s) — double-click or Enter to paste'}"/>
+                              StringFormat='Showing {0} result(s) — Press Enter or ⧉ to copy'}"/>
 
             <!-- ── Items list ──────────────────────────────────────── -->
-            <ListBox Grid.Row="3"
-                     Style="{StaticResource HistoryListBox}"
-                     ItemContainerStyle="{StaticResource HistoryListItem}"
-                     ItemsSource="{Binding FilteredItems}"
-                     SelectedItem="{Binding SelectedItem}"
-                     x:Name="ItemsListBox"
-                     MouseDoubleClick="ItemsListBox_MouseDoubleClick"
-                     ScrollViewer.VerticalScrollBarVisibility="Auto">
-                <ListBox.ItemTemplate>
-                    <DataTemplate DataType="{x:Type models:ClipboardItem}">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>  <!-- pin icon -->
-                                <ColumnDefinition Width="*"/>     <!-- preview text -->
-                                <ColumnDefinition Width="Auto"/>  <!-- time + type badge -->
-                            </Grid.ColumnDefinitions>
+            <Grid Grid.Row="3">
+                <ListBox Style="{StaticResource HistoryListBox}"
+                         ItemContainerStyle="{StaticResource HistoryListItem}"
+                         ItemsSource="{Binding FilteredItems}"
+                         SelectedItem="{Binding SelectedItem}"
+                         x:Name="ItemsListBox"
+                         MouseDoubleClick="ItemsListBox_MouseDoubleClick"
+                         ScrollViewer.VerticalScrollBarVisibility="Auto"
+                         KeyDown="ItemsListBox_KeyDown">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate DataType="{x:Type models:ClipboardItem}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>  <!-- pin star -->
+                                    <ColumnDefinition Width="Auto"/>  <!-- image thumbnail -->
+                                    <ColumnDefinition Width="*"/>     <!-- preview text -->
+                                    <ColumnDefinition Width="Auto"/>  <!-- hover copy btn -->
+                                    <ColumnDefinition Width="56"/>    <!-- timestamp -->
+                                </Grid.ColumnDefinitions>
 
-                            <!-- Pin star -->
-                            <TextBlock Grid.Column="0" Text="★" FontSize="14" Margin="0,0,8,0"
-                                       VerticalAlignment="Center"
-                                       Foreground="{StaticResource PinnedBrush}"
-                                       Visibility="{Binding IsPinned,
-                                                    Converter={StaticResource BoolToVis}}"/>
+                                <!-- Pin star (only for pinned items) -->
+                                <TextBlock Grid.Column="0" Text="★" FontSize="13"
+                                           Margin="0,0,6,0" VerticalAlignment="Center"
+                                           Foreground="{StaticResource PinnedBrush}"
+                                           ToolTip="Pinned"
+                                           Visibility="{Binding IsPinned,
+                                                        Converter={StaticResource BoolToVis}}"/>
 
-                            <!-- Preview text -->
-                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                <TextBlock Style="{StaticResource BodyText}"
-                                           Text="{Binding Preview}"/>
-                                <TextBlock Style="{StaticResource SubtitleText}"
-                                           Margin="0,2,0,0"
-                                           Text="{Binding ContentType}"/>
-                            </StackPanel>
+                                <!-- Image thumbnail (50×50, only for image entries) -->
+                                <Border Grid.Column="1" Width="50" Height="50"
+                                        Margin="0,0,8,0" CornerRadius="4"
+                                        ClipToBounds="True">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding ContentType}"
+                                                             Value="{x:Static models:ClipboardContentType.Image}">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <Image Source="{Binding ImageThumbnail}"
+                                           Stretch="UniformToFill"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"/>
+                                </Border>
 
-                            <!-- Time -->
-                            <TextBlock Grid.Column="2"
-                                       Style="{StaticResource SubtitleText}"
-                                       Text="{Binding CapturedAt, StringFormat='{}{0:HH:mm}'}"
-                                       Margin="8,0,0,0" VerticalAlignment="Center"/>
-                        </Grid>
-                    </DataTemplate>
-                </ListBox.ItemTemplate>
-            </ListBox>
+                                <!-- Preview text + content type sub-label -->
+                                <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                                    <TextBlock Style="{StaticResource BodyText}"
+                                               Text="{Binding Preview}"/>
+                                    <!-- Content-type badge shown only for non-text items -->
+                                    <TextBlock Margin="0,2,0,0"
+                                               Text="{Binding ContentType}">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock" BasedOn="{StaticResource SubtitleText}">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding ContentType}"
+                                                                 Value="{x:Static models:ClipboardContentType.Image}">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding ContentType}"
+                                                                 Value="{x:Static models:ClipboardContentType.Files}">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding ContentType}"
+                                                                 Value="{x:Static models:ClipboardContentType.Other}">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </StackPanel>
+
+                                <!-- Per-item hover copy button (⧉) -->
+                                <Button Grid.Column="3"
+                                        Command="{Binding DataContext.CopyItemCommand,
+                                                  RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                        CommandParameter="{Binding}"
+                                        Padding="6,4" Margin="4,0"
+                                        VerticalAlignment="Center"
+                                        ToolTip="Copy to clipboard">
+                                    <Button.Style>
+                                        <Style TargetType="Button" BasedOn="{StaticResource IconButton}">
+                                            <Setter Property="Visibility" Value="Hidden"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsMouseOver,
+                                                             RelativeSource={RelativeSource AncestorType=ListBoxItem}}"
+                                                             Value="True">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                    <TextBlock Text="⧉" FontSize="14"
+                                               Foreground="{StaticResource PrimaryBrush}"/>
+                                </Button>
+
+                                <!-- Timestamp: HH:mm today, MMM d otherwise -->
+                                <TextBlock Grid.Column="4"
+                                           Style="{StaticResource SubtitleText}"
+                                           Text="{Binding CapturedAt, Converter={StaticResource TimestampConv}}"
+                                           HorizontalAlignment="Right"
+                                           VerticalAlignment="Center"/>
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+
+                <!-- Empty-state overlay -->
+                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
+                            IsHitTestVisible="False"
+                            Visibility="{Binding FilteredItems.Count, Converter={StaticResource ZeroToVis}}">
+                    <TextBlock Text="📋" FontSize="40" HorizontalAlignment="Center"
+                               Opacity="0.25"/>
+                    <TextBlock Text="Nothing copied yet"
+                               FontFamily="Segoe UI" FontSize="14"
+                               Foreground="{StaticResource TextSecondaryBrush}"
+                               HorizontalAlignment="Center" Margin="0,8,0,0"/>
+                    <TextBlock Text="Copy something and it will appear here."
+                               FontFamily="Segoe UI" FontSize="12"
+                               Foreground="{StaticResource TextSecondaryBrush}"
+                               HorizontalAlignment="Center" Margin="0,4,0,0" Opacity="0.7"/>
+                </StackPanel>
+            </Grid>
 
             <!-- ── Action toolbar ─────────────────────────────────── -->
             <Border Grid.Row="4" BorderThickness="0,1,0,0"
@@ -151,6 +242,7 @@
                     CornerRadius="0,0,12,12"
                     Padding="12,8">
                 <Grid>
+                    <!-- Secondary actions (left) -->
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
                         <Button Content="📌 Pin"
                                 Style="{StaticResource IconButton}"
@@ -171,14 +263,28 @@
                                 Command="{Binding ClearHistoryCommand}"
                                 Padding="8,4" FontFamily="Segoe UI" FontSize="12"
                                 Foreground="{StaticResource DangerBrush}"
-                                ToolTip="Clear all history"/>
+                                ToolTip="Clear all unpinned history"/>
                     </StackPanel>
 
-                    <Button Content="⏎  Paste"
-                            Style="{StaticResource PrimaryButton}"
-                            Command="{Binding PasteSelectedCommand}"
-                            HorizontalAlignment="Right"
-                            Padding="16,6"/>
+                    <!-- Primary Copy action (right) + "Copied!" toast -->
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <!-- "Copied!" confirmation toast (fades out after 600 ms via code-behind) -->
+                        <Border x:Name="CopiedToast"
+                                Background="{StaticResource SuccessBrush}"
+                                CornerRadius="6" Padding="10,4"
+                                Margin="0,0,8,0" Opacity="0"
+                                VerticalAlignment="Center">
+                            <TextBlock Text="✅ Copied!" Foreground="White"
+                                       FontFamily="Segoe UI" FontSize="12" FontWeight="SemiBold"/>
+                        </Border>
+
+                        <Button Content="📋 Copy"
+                                Style="{StaticResource PrimaryButton}"
+                                Command="{Binding CopySelectedCommand}"
+                                HorizontalAlignment="Right"
+                                Padding="16,6"
+                                ToolTip="Copy selected item to clipboard (Enter) · Esc to close"/>
+                    </StackPanel>
                 </Grid>
             </Border>
         </Grid>
