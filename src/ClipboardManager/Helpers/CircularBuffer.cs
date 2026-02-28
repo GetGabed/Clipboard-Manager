@@ -6,7 +6,7 @@ namespace ClipboardManager.Helpers;
 /// </summary>
 public class CircularBuffer<T>
 {
-    private readonly int _capacity;
+    private int _capacity;
     private readonly LinkedList<T> _list = new();
 
     public int Count    => _list.Count;
@@ -34,6 +34,37 @@ public class CircularBuffer<T>
     public void Clear()               => _list.Clear();
     public List<T> ToList()           => new(_list);
     public IEnumerator<T> GetEnumerator() => _list.GetEnumerator();
+
+    /// <summary>
+    /// Resizes the buffer capacity. If shrinking, oldest non-pinned items are
+    /// removed first until the count fits; pinned items are evicted last.
+    /// </summary>
+    public void Resize(int newCapacity)
+    {
+        if (newCapacity <= 0) throw new ArgumentOutOfRangeException(nameof(newCapacity));
+        _capacity = newCapacity;
+
+        // Trim excess items (oldest non-pinned first, then pinned if needed)
+        while (_list.Count > _capacity)
+        {
+            // Find oldest non-pinned
+            var node = _list.First;
+            LinkedListNode<T>? candidate = null;
+            while (node is not null)
+            {
+                if (node.Value is not Models.ClipboardItem { IsPinned: true })
+                {
+                    candidate = node;
+                    break;
+                }
+                node = node.Next;
+            }
+            if (candidate is not null)
+                _list.Remove(candidate);
+            else if (_list.First is not null)
+                _list.RemoveFirst(); // all pinned — evict oldest
+        }
+    }
 
     /// <summary>
     /// Moves <paramref name="item"/> to the newest end of the buffer without

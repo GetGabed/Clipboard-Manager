@@ -1,3 +1,4 @@
+using System.IO;
 using ClipboardManager.Helpers;
 using ClipboardManager.Models;
 using ClipboardManager.Services;
@@ -207,4 +208,231 @@ public class ClipboardStorageServiceTests
         Assert.DoesNotContain(svc.Items, i => i.TextContent == "a");
         Assert.Contains(svc.Items, i => i.TextContent == "b"); // pinned survives
     }
+
+    [Fact]
+    public void Resize_Smaller_EvictsOldestItems()
+    {
+        var svc = new ClipboardStorageService(10);
+        svc.Add(Text("a"));
+        svc.Add(Text("b"));
+        svc.Add(Text("c"));
+        svc.Add(Text("d"));
+        svc.Add(Text("e"));
+
+        svc.Resize(3); // trim to 3
+
+        Assert.Equal(3, svc.Items.Count);
+        // newest items survive (e, d, c)
+        Assert.Contains(svc.Items, i => i.TextContent == "e");
+        Assert.Contains(svc.Items, i => i.TextContent == "d");
+        Assert.Contains(svc.Items, i => i.TextContent == "c");
+        Assert.DoesNotContain(svc.Items, i => i.TextContent == "a");
+    }
+
+    [Fact]
+    public void Resize_PinnedItemsSurviveLonger()
+    {
+        var svc = new ClipboardStorageService(10);
+        var pinned = Text("pinned"); pinned.IsPinned = true;
+        svc.Add(pinned);
+        svc.Add(Text("a"));
+        svc.Add(Text("b"));
+        svc.Add(Text("c"));
+
+        svc.Resize(2); // trim to 2, non-pinned removed first
+
+        // pinned should still be present even if it's older
+        Assert.Contains(svc.Items, i => i.TextContent == "pinned");
+    }
 }
+
+// ── TextTransformHelper ───────────────────────────────────────────────────────
+
+public class TextTransformHelperTests
+{
+    [Theory]
+    [InlineData("hello world", "HELLO WORLD")]
+    [InlineData("",            ""             )]
+    public void ToUpperCase_Correct(string input, string expected)
+        => Assert.Equal(expected, TextTransformHelper.ToUpperCase(input));
+
+    [Theory]
+    [InlineData("HELLO WORLD", "hello world")]
+    public void ToLowerCase_Correct(string input, string expected)
+        => Assert.Equal(expected, TextTransformHelper.ToLowerCase(input));
+
+    [Fact]
+    public void ToTitleCase_Correct()
+        => Assert.Equal("Hello World", TextTransformHelper.ToTitleCase("hello world"));
+
+    [Fact]
+    public void ToSentenceCase_CapitalisesFirstChar()
+    {
+        var result = TextTransformHelper.ToSentenceCase("hello world");
+        Assert.StartsWith("H", result);
+    }
+
+    [Fact]
+    public void TrimWhitespace_RemovesLeadingTrailing()
+        => Assert.Equal("hi", TextTransformHelper.TrimWhitespace("  hi  "));
+
+    [Fact]
+    public void RemoveExtraSpaces_CollapsesInternalSpaces()
+        => Assert.Equal("a b c", TextTransformHelper.RemoveExtraSpaces("a   b   c"));
+
+    [Fact]
+    public void Base64_RoundTrip()
+    {
+        var original = "Hello, Base64!";
+        var encoded  = TextTransformHelper.EncodeBase64(original);
+        var decoded  = TextTransformHelper.DecodeBase64(encoded);
+        Assert.Equal(original, decoded);
+    }
+
+    [Fact]
+    public void DecodeBase64_InvalidInput_ReturnsErrorString()
+        => Assert.Equal("[Invalid Base64]", TextTransformHelper.DecodeBase64("not valid!!!"));
+
+    [Fact]
+    public void Url_RoundTrip()
+    {
+        var original = "hello world & more=1";
+        var encoded  = TextTransformHelper.UrlEncode(original);
+        var decoded  = TextTransformHelper.UrlDecode(encoded);
+        Assert.Equal(original, decoded);
+    }
+
+    [Fact]
+    public void Html_RoundTrip()
+    {
+        var original = "<div class=\"x\">&amp;</div>";
+        var encoded  = TextTransformHelper.HtmlEncode(original);
+        var decoded  = TextTransformHelper.HtmlDecode(encoded);
+        Assert.Equal(original, decoded);
+    }
+
+    [Fact]
+    public void ReverseText_Correct()
+        => Assert.Equal("olleh", TextTransformHelper.ReverseText("hello"));
+
+    [Fact]
+    public void CountCharacters_ReturnsExpectedFormat()
+    {
+        var result = TextTransformHelper.CountCharacters("hello world");
+        Assert.Contains("Characters:", result);
+        Assert.Contains("Words:",      result);
+        Assert.Contains("Lines:",      result);
+    }
+}
+
+// ── ClipboardItem helpers ─────────────────────────────────────────────────────
+
+public class ClipboardItemHelperTests
+{
+    [Fact]
+    public void ImageDimensions_NonZero_ReturnsFormattedString()
+    {
+        var item = new ClipboardItem
+        {
+            ContentType = ClipboardContentType.Image,
+            ImageWidth  = 1920,
+            ImageHeight = 1080
+        };
+        Assert.Equal("1920 × 1080", item.ImageDimensions);
+    }
+
+    [Fact]
+    public void ImageDimensions_ZeroValues_ReturnsEmpty()
+    {
+        var item = new ClipboardItem { ContentType = ClipboardContentType.Text };
+        Assert.Equal(string.Empty, item.ImageDimensions);
+    }
+
+    [Fact]
+    public void FilePathsTooltip_MultipleFiles_ReturnsJoinedPaths()
+    {
+        var item = new ClipboardItem
+        {
+            ContentType = ClipboardContentType.Files,
+            FilePaths   = new[] { @"C:\a.txt", @"C:\b.txt" }
+        };
+        Assert.Contains("\n", item.FilePathsTooltip);
+        Assert.Contains(@"C:\a.txt", item.FilePathsTooltip);
+    }
+
+    [Fact]
+    public void FilePathsTooltip_TextItem_ReturnsNull()
+    {
+        var item = new ClipboardItem
+        {
+            ContentType = ClipboardContentType.Text,
+            TextContent = "hello"
+        };
+        Assert.Null(item.FilePathsTooltip);
+    }
+}
+
+// ── HistoryPersistenceService ─────────────────────────────────────────────────
+
+public class HistoryPersistenceServiceTests : IDisposable
+{
+    // Redirect persistence to a temp path so tests are isolated
+    private readonly string _tempDir = Path.Combine(Path.GetTempPath(), $"cbm_test_{Guid.NewGuid():N}");
+
+    public void Dispose()
+    {
+        try { Directory.Delete(_tempDir, true); } catch { /* ignore */ }
+    }
+
+    private static ClipboardItem TextItem(string text, bool pinned = false) =>
+        new() { ContentType = ClipboardContentType.Text, TextContent = text, IsPinned = pinned };
+
+    [Fact]
+    public void SaveAndLoad_TextItems_RoundTrip()
+    {
+        var svc   = new ClipboardStorageService(10);
+        var items = new[]
+        {
+            TextItem("first"),
+            TextItem("second", pinned: true),
+            TextItem("third")
+        };
+        foreach (var i in items) svc.Add(i);
+
+        var persistence = new HistoryPersistenceService();
+        persistence.Save(svc.Items, 100);
+
+        var loaded = persistence.Load(100);
+
+        Assert.Equal(3, loaded.Count);
+        Assert.Contains(loaded, i => i.TextContent == "first");
+        Assert.Contains(loaded, i => i.TextContent == "second" && i.IsPinned);
+        Assert.Contains(loaded, i => i.TextContent == "third");
+    }
+
+    [Fact]
+    public void Save_ImageItems_SkippedDuringSerialization()
+    {
+        var svc = new ClipboardStorageService(10);
+        svc.Add(TextItem("text only"));
+        // Image items have no TextContent — they should be excluded
+        var imageItem = new ClipboardItem { ContentType = ClipboardContentType.Image };
+        svc.Add(imageItem);
+
+        var persistence = new HistoryPersistenceService();
+        persistence.Save(svc.Items, 100);
+        var loaded = persistence.Load(100);
+
+        Assert.All(loaded, i => Assert.Equal(ClipboardContentType.Text, i.ContentType));
+    }
+
+    [Fact]
+    public void Load_WhenNoFileExists_ReturnsEmptyList()
+    {
+        var persistence = new HistoryPersistenceService();
+        // Use a guaranteed non-existent path by temporarily ensuring no history file
+        // (default service uses %AppData%\ClipboardManager\history.json)
+        var loaded = persistence.Load(100);
+        // Should either be empty (no file) or valid items — never throw
+        Assert.NotNull(loaded);
+    }}

@@ -23,4 +23,7 @@ public interface IClipboardStorageService
 
     /// <summary>Moves <paramref name="item"/> to the top (newest slot) of the history buffer.</summary>
     void Promote(ClipboardItem item);
+
+    /// <summary>Resizes the internal buffer to the new capacity, trimming oldest items if needed.</summary>
+    void Resize(int newCapacity);
 }

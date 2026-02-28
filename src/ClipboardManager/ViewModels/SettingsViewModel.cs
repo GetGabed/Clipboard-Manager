@@ -1,3 +1,6 @@
+using System.Diagnostics;
+using System.IO;
+using System.Windows;
 using System.Windows.Input;
 using ClipboardManager.Helpers;
 using ClipboardManager.Models;
@@ -8,6 +11,7 @@ namespace ClipboardManager.ViewModels;
 public class SettingsViewModel : BaseViewModel
 {
     private readonly SettingsService _settingsService;
+    private readonly IClipboardStorageService _storage;
     private AppSettings _settings;
 
     public int MaxHistoryItems
@@ -18,6 +22,8 @@ public class SettingsViewModel : BaseViewModel
             if (_settings.MaxHistoryItems != value)
             {
                 _settings.MaxHistoryItems = value;
+                // Live-resize the in-memory buffer immediately
+                _storage.Resize(value);
                 OnPropertyChanged();
             }
         }
@@ -64,16 +70,19 @@ public class SettingsViewModel : BaseViewModel
 
     public string HotkeyDisplay => _settings.Hotkey.ToString();
 
-    public ICommand SaveCommand { get; }
-    public ICommand ResetCommand { get; }
+    public ICommand SaveCommand          { get; }
+    public ICommand ResetCommand         { get; }
+    public ICommand ExportHistoryCommand { get; }
 
-    public SettingsViewModel(SettingsService settingsService)
+    public SettingsViewModel(SettingsService settingsService, IClipboardStorageService storage)
     {
         _settingsService = settingsService;
-        _settings = _settingsService.Current;
+        _storage         = storage;
+        _settings        = _settingsService.Current;
 
-        SaveCommand  = new RelayCommand(_ => Save());
-        ResetCommand = new RelayCommand(_ => Reset());
+        SaveCommand          = new RelayCommand(_ => Save());
+        ResetCommand         = new RelayCommand(_ => Reset());
+        ExportHistoryCommand = new RelayCommand(_ => ExportHistory());
     }
 
     private void Save()
@@ -90,4 +99,28 @@ public class SettingsViewModel : BaseViewModel
         _settings = _settingsService.Current;
         OnPropertyChanged(string.Empty); // Refresh all bindings
     }
+
+    private void ExportHistory()
+    {
+        try
+        {
+            var exportPath = Path.Combine(Path.GetTempPath(), "clipboard_export.txt");
+            var lines = _storage.Items
+                .Where(i => i.ContentType == ClipboardContentType.Text)
+                .Select(i => $"[{i.CapturedAt:yyyy-MM-dd HH:mm}]{(i.IsPinned ? " ★" : "")}\n{i.TextContent}");
+
+            File.WriteAllText(exportPath, string.Join("\n\n---\n\n", lines));
+
+            Process.Start(new ProcessStartInfo("notepad.exe", $"\"{exportPath}\"")
+            {
+                UseShellExecute = true
+            });
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Export failed: {ex.Message}", "Clipboard Manager",
+                            MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
 }
+

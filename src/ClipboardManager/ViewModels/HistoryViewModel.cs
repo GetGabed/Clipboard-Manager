@@ -1,4 +1,6 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
+using System.IO;
 using System.Windows.Input;
 using ClipboardManager.Helpers;
 using ClipboardManager.Models;
@@ -11,9 +13,10 @@ public class HistoryViewModel : BaseViewModel
     private readonly IClipboardStorageService _storage;
     private readonly ClipboardMonitorService _monitor;
 
-    private string _searchText = string.Empty;
+    private string _searchText     = string.Empty;
     private ClipboardItem? _selectedItem;
     private bool _isWindowVisible;
+    private bool _showPinnedOnly;
 
     // ── Observable collections ────────────────────────────────────────────
     public ObservableCollection<ClipboardItem> FilteredItems { get; } = new();
@@ -38,7 +41,14 @@ public class HistoryViewModel : BaseViewModel
     public ClipboardItem? SelectedItem
     {
         get => _selectedItem;
-        set => SetField(ref _selectedItem, value);
+        set
+        {
+            if (SetField(ref _selectedItem, value))
+            {
+                OnPropertyChanged(nameof(SelectedItemIsText));
+                OnPropertyChanged(nameof(SelectedItemIsFiles));
+            }
+        }
     }
 
     public bool IsWindowVisible
@@ -46,6 +56,23 @@ public class HistoryViewModel : BaseViewModel
         get => _isWindowVisible;
         set => SetField(ref _isWindowVisible, value);
     }
+
+    /// <summary>When true, only show pinned items.</summary>
+    public bool ShowPinnedOnly
+    {
+        get => _showPinnedOnly;
+        set
+        {
+            if (SetField(ref _showPinnedOnly, value))
+                RefreshFilter();
+        }
+    }
+
+    /// <summary>True when the selected item is plain text — drives Transform button visibility.</summary>
+    public bool SelectedItemIsText  => _selectedItem?.ContentType == ClipboardContentType.Text;
+
+    /// <summary>True when the selected item is a file drop — drives Open Folder button visibility.</summary>
+    public bool SelectedItemIsFiles => _selectedItem?.ContentType == ClipboardContentType.Files;
 
     public int TotalCount => _storage.Items.Count;
 
@@ -55,9 +82,13 @@ public class HistoryViewModel : BaseViewModel
     /// <summary>Copy a specific item directly (used by the per-item hover button).</summary>
     public ICommand CopyItemCommand { get; }
     public ICommand DeleteSelectedCommand { get; }
-    public ICommand PinSelectedCommand { get; }
-    public ICommand ClearHistoryCommand { get; }
-    public ICommand ClearSearchCommand { get; }
+    public ICommand PinSelectedCommand    { get; }
+    public ICommand ClearHistoryCommand   { get; }
+    public ICommand ClearSearchCommand    { get; }
+    /// <summary>Apply a named text transform to the selected item. Parameter = transform key string.</summary>
+    public ICommand TransformCommand      { get; }
+    /// <summary>Open the containing folder for the selected file item.</summary>
+    public ICommand OpenFolderCommand     { get; }
 
     // ── Events ────────────────────────────────────────────────────────────
     /// <summary>Raised after an item is copied so the view can trigger a brief flash/toast.</summary>
@@ -71,22 +102,20 @@ public class HistoryViewModel : BaseViewModel
         // Propagate new items → filtered list
         _storage.ItemAdded += OnItemAdded;
 
-        CopySelectedCommand  = new RelayCommand(_ => CopySelected(),               _ => SelectedItem is not null);
-        CopyItemCommand      = new RelayCommand<ClipboardItem>(item => { if (item is not null) CopyItem(item); }, item => item is not null);
-        DeleteSelectedCommand = new RelayCommand(_ => DeleteSelected(),             _ => SelectedItem is not null);
-        PinSelectedCommand    = new RelayCommand(_ => PinSelected(),               _ => SelectedItem is not null);
-        ClearHistoryCommand   = new RelayCommand(_ => ClearHistory(),              _ => _storage.Items.Count > 0);
+        CopySelectedCommand   = new RelayCommand(_ => CopySelected(),   _ => SelectedItem is not null);
+        CopyItemCommand       = new RelayCommand<ClipboardItem>(item => { if (item is not null) CopyItem(item); }, item => item is not null);
+        DeleteSelectedCommand = new RelayCommand(_ => DeleteSelected(), _ => SelectedItem is not null);
+        PinSelectedCommand    = new RelayCommand(_ => PinSelected(),    _ => SelectedItem is not null);
+        ClearHistoryCommand   = new RelayCommand(_ => ClearHistory(),   _ => _storage.Items.Count > 0);
         ClearSearchCommand    = new RelayCommand(_ => SearchText = string.Empty);
+        TransformCommand      = new RelayCommand<string>(ApplyTransform, _ => SelectedItemIsText);
+        OpenFolderCommand     = new RelayCommand(_ => OpenFolder(),      _ => SelectedItemIsFiles);
 
         RefreshFilter();
     }
 
     // ── Command implementations ───────────────────────────────────────────
 
-    /// <summary>
-    /// Copies the currently selected item to the clipboard.
-    /// Window stays open — only Esc dismisses it.
-    /// </summary>
     private void CopySelected()
     {
         if (SelectedItem is null) return;
@@ -99,12 +128,10 @@ public class HistoryViewModel : BaseViewModel
     /// </summary>
     private void CopyItem(ClipboardItem item)
     {
-        // SuppressNextCapture MUST be called before SetAsCurrentClipboard so the
-        // WM_CLIPBOARDUPDATE event triggered by Clipboard.Set* is silently ignored.
         _monitor.SuppressNextCapture();
-        _storage.SetAsCurrentClipboard(item);  // also promotes item internally
-        RefreshFilter();                       // show promoted item at top immediately
-        ItemCopied?.Invoke(this, item);        // notify the view to show a flash/toast
+        _storage.SetAsCurrentClipboard(item);
+        RefreshFilter();
+        ItemCopied?.Invoke(this, item);
     }
 
     private void DeleteSelected()
@@ -121,7 +148,7 @@ public class HistoryViewModel : BaseViewModel
         if (SelectedItem is null) return;
         SelectedItem.IsPinned = !SelectedItem.IsPinned;
         OnPropertyChanged(nameof(SelectedItem));
-        RefreshFilter();  // re-sort so pinned items float to top immediately
+        RefreshFilter();
     }
 
     private void ClearHistory()
@@ -132,19 +159,76 @@ public class HistoryViewModel : BaseViewModel
         OnPropertyChanged(nameof(TotalCount));
     }
 
+    // ── Text transforms ───────────────────────────────────────────────────
+
+    private void ApplyTransform(string? transformName)
+    {
+        if (SelectedItem?.TextContent is null) return;
+        var text = SelectedItem.TextContent;
+
+        var result = transformName switch
+        {
+            "Uppercase"      => TextTransformHelper.ToUpperCase(text),
+            "Lowercase"      => TextTransformHelper.ToLowerCase(text),
+            "TitleCase"      => TextTransformHelper.ToTitleCase(text),
+            "SentenceCase"   => TextTransformHelper.ToSentenceCase(text),
+            "TrimWhitespace" => TextTransformHelper.TrimWhitespace(text),
+            "RemoveSpaces"   => TextTransformHelper.RemoveExtraSpaces(text),
+            "Base64Encode"   => TextTransformHelper.EncodeBase64(text),
+            "Base64Decode"   => TextTransformHelper.DecodeBase64(text),
+            "UrlEncode"      => TextTransformHelper.UrlEncode(text),
+            "UrlDecode"      => TextTransformHelper.UrlDecode(text),
+            "HtmlEncode"     => TextTransformHelper.HtmlEncode(text),
+            "HtmlDecode"     => TextTransformHelper.HtmlDecode(text),
+            "Reverse"        => TextTransformHelper.ReverseText(text),
+            "Count"          => TextTransformHelper.CountCharacters(text),
+            _                => null
+        };
+
+        if (result is null) return;
+
+        // Add the transformed text as a new history entry and put it on the clipboard
+        var newItem = new ClipboardItem { ContentType = ClipboardContentType.Text, TextContent = result };
+        _monitor.SuppressNextCapture();
+        _storage.Add(newItem);
+        System.Windows.Clipboard.SetText(result);
+        RefreshFilter();
+        ItemCopied?.Invoke(this, newItem);
+    }
+
+    // ── File support ──────────────────────────────────────────────────────
+
+    private void OpenFolder()
+    {
+        var path = SelectedItem?.FilePaths?.FirstOrDefault();
+        if (path is null) return;
+        try
+        {
+            Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{path}\"")
+            {
+                UseShellExecute = true
+            });
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[HistoryViewModel] OpenFolder failed: {ex.Message}");
+        }
+    }
+
     // ── Filtering ─────────────────────────────────────────────────────────
     public void RefreshFilter()
     {
         FilteredItems.Clear();
         var query = _searchText.Trim();
 
-        // Items is already newest-first; stable sort floats pinned to top
-        // while preserving insertion order (including post-promotion order).
         var source = _storage.Items
             .OrderByDescending(i => i.IsPinned);
 
         foreach (var item in source)
         {
+            // Pinned-only filter
+            if (_showPinnedOnly && !item.IsPinned) continue;
+
             if (string.IsNullOrEmpty(query) ||
                 (item.TextContent?.Contains(query, StringComparison.OrdinalIgnoreCase) ?? false) ||
                 item.Preview.Contains(query, StringComparison.OrdinalIgnoreCase))
@@ -164,3 +248,4 @@ public class HistoryViewModel : BaseViewModel
         });
     }
 }
+

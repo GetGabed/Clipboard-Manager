@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media.Imaging;
 using ClipboardManager.Models;
+using System.Drawing;
 
 namespace ClipboardManager.Services;
 
@@ -20,6 +21,9 @@ public class ClipboardMonitorService : IDisposable
 
     [DllImport("user32.dll", SetLastError = true)]
     private static extern bool RemoveClipboardFormatListener(IntPtr hwnd);
+
+    [DllImport("gdi32.dll")]
+    private static extern bool DeleteObject(IntPtr hObject);
 
     private readonly IClipboardStorageService _storage;
     private HwndSource? _hwndSource;
@@ -94,7 +98,9 @@ public class ClipboardMonitorService : IDisposable
                     _storage.Add(new ClipboardItem
                     {
                         ContentType    = ClipboardContentType.Image,
-                        ImageThumbnail = CreateThumbnail(img)
+                        ImageThumbnail = CreateThumbnail(img),
+                        ImageWidth     = img.PixelWidth,
+                        ImageHeight    = img.PixelHeight
                     });
                 }
             }
@@ -107,7 +113,8 @@ public class ClipboardMonitorService : IDisposable
                 _storage.Add(new ClipboardItem
                 {
                     ContentType = ClipboardContentType.Files,
-                    FilePaths   = paths
+                    FilePaths   = paths,
+                    FileIcon    = paths.Length > 0 ? ExtractFileIcon(paths[0]) : null
                 });
             }
         }
@@ -128,6 +135,36 @@ public class ClipboardMonitorService : IDisposable
                                 (double)maxSize / source.PixelHeight);
         return new TransformedBitmap(source,
             new System.Windows.Media.ScaleTransform(scale, scale));
+    }
+
+    /// <summary>
+    /// Extracts the Shell-associated icon for a file path and returns a WPF BitmapSource.
+    /// Returns null if the file doesn't exist or extraction fails.
+    /// </summary>
+    private BitmapSource? ExtractFileIcon(string path)
+    {
+        try
+        {
+            if (!System.IO.File.Exists(path)) return null;
+            using var icon = Icon.ExtractAssociatedIcon(path);
+            if (icon is null) return null;
+            using var bmp = icon.ToBitmap();
+            var hBitmap = bmp.GetHbitmap();
+            try
+            {
+                return Imaging.CreateBitmapSourceFromHBitmap(
+                    hBitmap, IntPtr.Zero, System.Windows.Int32Rect.Empty,
+                    BitmapSizeOptions.FromEmptyOptions());
+            }
+            finally
+            {
+                DeleteObject(hBitmap);
+            }
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     public void Dispose()

@@ -62,7 +62,22 @@
 
             <CheckBox Content="Persist history to disk"
                       IsChecked="{Binding PersistToDisk}"
-                      FontFamily="Segoe UI" FontSize="13" Cursor="Hand"/>
+                      FontFamily="Segoe UI" FontSize="13" Cursor="Hand"
+                      Margin="0,0,0,12"/>
+
+            <!-- Export -->
+            <StackPanel Margin="0,8,0,0">
+                <TextBlock Text="Export history" Style="{StaticResource BodyText}"
+                           FontWeight="SemiBold"/>
+                <TextBlock Text="Saves all text items to a .txt file and opens it in Notepad."
+                           Style="{StaticResource SubtitleText}" Margin="0,2,0,8"/>
+                <Button Content="📄 Export as TXT"
+                        Command="{Binding ExportHistoryCommand}"
+                        Style="{StaticResource IconButton}"
+                        Padding="10,6" FontFamily="Segoe UI" FontSize="13"
+                        HorizontalAlignment="Left"
+                        Foreground="{StaticResource PrimaryBrush}"/>
+            </StackPanel>
         </StackPanel>
 
         <!-- Action buttons -->

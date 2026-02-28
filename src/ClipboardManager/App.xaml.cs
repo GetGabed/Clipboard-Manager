@@ -15,10 +15,11 @@ namespace ClipboardManager;
 public partial class App : Application
 {
     // ── Services ──────────────────────────────────────────────────────────
-    private SettingsService       _settingsService  = null!;
-    private ClipboardStorageService _storageService = null!;
-    private ClipboardMonitorService _monitor        = null!;
-    private HotkeyService         _hotkeyService    = null!;
+    private SettingsService            _settingsService  = null!;
+    private ClipboardStorageService    _storageService   = null!;
+    private ClipboardMonitorService    _monitor          = null!;
+    private HotkeyService              _hotkeyService    = null!;
+    private HistoryPersistenceService  _persistence      = null!;
 
     // ── Windows ───────────────────────────────────────────────────────────
     private HistoryWindow?  _historyWindow;
@@ -38,6 +39,15 @@ public partial class App : Application
         _storageService  = new ClipboardStorageService(_settingsService.Current.MaxHistoryItems);
         _monitor         = new ClipboardMonitorService(_storageService);
         _hotkeyService   = new HotkeyService(_settingsService.Current.Hotkey);
+        _persistence     = new HistoryPersistenceService();
+
+        // Restore history from disk (text items only, if enabled)
+        if (_settingsService.Current.PersistToDisk)
+        {
+            var loaded = _persistence.Load(_settingsService.Current.MaxHistoryItems);
+            foreach (var item in loaded)
+                _storageService.Add(item);
+        }
 
         // Build tray icon
         _trayIcon = (TaskbarIcon)FindResource("TrayIcon");
@@ -113,14 +123,16 @@ public partial class App : Application
             return;
         }
 
-        var vm = new SettingsViewModel(_settingsService);
+        var vm = new SettingsViewModel(_settingsService, _storageService);
         _settingsWindow = new SettingsWindow(vm);
         _settingsWindow.ShowDialog();
     }
 
     // ── Shutdown ──────────────────────────────────────────────────────────
     protected override void OnExit(ExitEventArgs e)
-    {
+    {        // Persist history to disk before shutting down
+        if (_settingsService.Current.PersistToDisk)
+            _persistence.Save(_storageService.Items, _settingsService.Current.MaxHistoryItems);
         _settingsService.Save();
         _hotkeyService.Dispose();
         _monitor.Dispose();

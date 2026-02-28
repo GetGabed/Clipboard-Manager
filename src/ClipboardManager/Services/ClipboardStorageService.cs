@@ -74,6 +74,11 @@ public class ClipboardStorageService : IClipboardStorageService
         lock (_lock) { _buffer.Promote(item); }
     }
 
+    public void Resize(int newCapacity)
+    {
+        lock (_lock) { _buffer.Resize(newCapacity); }
+    }
+
     public void SetAsCurrentClipboard(ClipboardItem item)
     {
         Application.Current.Dispatcher.Invoke(() =>

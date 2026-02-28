@@ -65,15 +65,22 @@
                                    Text="{Binding TotalCount, StringFormat='{}{0} items'}"/>
                     </Border>
 
-                    <!-- Close button -->
-                    <Button Style="{StaticResource IconButton}"
-                            HorizontalAlignment="Right"
-                            Click="CloseButton_Click"
-                            Background="Transparent" Width="28" Height="28"
-                            ToolTip="Close (Esc)">
-                        <TextBlock Text="✕" Foreground="White" FontSize="13"
-                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                    </Button>
+                    <!-- Right: Pinned-only toggle + Close -->
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                        <ToggleButton IsChecked="{Binding ShowPinnedOnly}"
+                                      Style="{StaticResource IconButton}"
+                                      Padding="6,3" Margin="0,0,6,0"
+                                      ToolTip="Show pinned items only">
+                            <TextBlock Text="★" FontSize="14" Foreground="#FFFFC107"/>
+                        </ToggleButton>
+                        <Button Style="{StaticResource IconButton}"
+                                Click="CloseButton_Click"
+                                Background="Transparent" Width="28" Height="28"
+                                ToolTip="Close (Esc)">
+                            <TextBlock Text="✕" Foreground="White" FontSize="13"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Button>
+                    </StackPanel>
                 </Grid>
             </Border>
 
@@ -148,19 +155,49 @@
                                             </Style.Triggers>
                                         </Style>
                                     </Border.Style>
+                                    <!-- Full-size preview on hover -->
+                                    <Border.ToolTip>
+                                        <ToolTip MaxWidth="520" MaxHeight="420" Padding="4">
+                                            <Image Source="{Binding ImageThumbnail}"
+                                                   MaxWidth="500" MaxHeight="400"
+                                                   Stretch="Uniform"/>
+                                        </ToolTip>
+                                    </Border.ToolTip>
                                     <Image Source="{Binding ImageThumbnail}"
                                            Stretch="UniformToFill"
                                            HorizontalAlignment="Center"
                                            VerticalAlignment="Center"/>
                                 </Border>
 
-                                <!-- Preview text + content type sub-label -->
-                                <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                                <!-- File-type icon (22×22, only for file items) -->
+                                <Image Grid.Column="1"
+                                       Source="{Binding FileIcon}"
+                                       Width="22" Height="22"
+                                       Margin="0,0,8,0"
+                                       VerticalAlignment="Center"
+                                       RenderOptions.BitmapScalingMode="HighQuality">
+                                    <Image.Style>
+                                        <Style TargetType="Image">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding ContentType}"
+                                                             Value="{x:Static models:ClipboardContentType.Files}">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Image.Style>
+                                </Image>
+
+                                <!-- Preview text + subtitle (image dims / file info) -->
+                                <StackPanel Grid.Column="2" VerticalAlignment="Center"
+                                            ToolTip="{Binding FilePathsTooltip}">
                                     <TextBlock Style="{StaticResource BodyText}"
                                                Text="{Binding Preview}"/>
-                                    <!-- Content-type badge shown only for non-text items -->
+
+                                    <!-- Image dimensions: e.g. 1920 × 1080 -->
                                     <TextBlock Margin="0,2,0,0"
-                                               Text="{Binding ContentType}">
+                                               Text="{Binding ImageDimensions}">
                                         <TextBlock.Style>
                                             <Style TargetType="TextBlock" BasedOn="{StaticResource SubtitleText}">
                                                 <Setter Property="Visibility" Value="Collapsed"/>
@@ -169,6 +206,18 @@
                                                                  Value="{x:Static models:ClipboardContentType.Image}">
                                                         <Setter Property="Visibility" Value="Visible"/>
                                                     </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+
+                                    <!-- Files / Other sub-label -->
+                                    <TextBlock Margin="0,2,0,0"
+                                               Text="{Binding ContentType}">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock" BasedOn="{StaticResource SubtitleText}">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
                                                     <DataTrigger Binding="{Binding ContentType}"
                                                                  Value="{x:Static models:ClipboardContentType.Files}">
                                                         <Setter Property="Visibility" Value="Visible"/>
@@ -242,6 +291,44 @@
                     CornerRadius="0,0,12,12"
                     Padding="12,8">
                 <Grid>
+                    <!-- Transform flyout popup -->
+                    <Popup x:Name="TransformPopup"
+                           Placement="Top"
+                           PlacementTarget="{Binding ElementName=TransformButton}"
+                           StaysOpen="False"
+                           AllowsTransparency="True">
+                        <Border Background="{StaticResource SurfaceBrush}"
+                                BorderBrush="{StaticResource BorderBrush}"
+                                BorderThickness="1" CornerRadius="8" Padding="4">
+                            <Border.Effect>
+                                <DropShadowEffect ShadowDepth="0" BlurRadius="12" Color="#30000000"/>
+                            </Border.Effect>
+                            <StackPanel MinWidth="180">
+                                <TextBlock Text="Transform Text"
+                                           FontFamily="Segoe UI" FontSize="11" FontWeight="SemiBold"
+                                           Margin="8,6,8,4"
+                                           Foreground="{StaticResource TextSecondaryBrush}"/>
+                                <Button Content="UPPERCASE"               Command="{Binding TransformCommand}" CommandParameter="Uppercase"      Style="{StaticResource IconButton}" HorizontalContentAlignment="Left" Padding="8,5" Click="TransformPopupItem_Click"/>
+                                <Button Content="lowercase"               Command="{Binding TransformCommand}" CommandParameter="Lowercase"      Style="{StaticResource IconButton}" HorizontalContentAlignment="Left" Padding="8,5" Click="TransformPopupItem_Click"/>
+                                <Button Content="Title Case"              Command="{Binding TransformCommand}" CommandParameter="TitleCase"      Style="{StaticResource IconButton}" HorizontalContentAlignment="Left" Padding="8,5" Click="TransformPopupItem_Click"/>
+                                <Button Content="Sentence case"           Command="{Binding TransformCommand}" CommandParameter="SentenceCase"   Style="{StaticResource IconButton}" HorizontalContentAlignment="Left" Padding="8,5" Click="TransformPopupItem_Click"/>
+                                <Separator Margin="4,2"/>
+                                <Button Content="Trim Whitespace"         Command="{Binding TransformCommand}" CommandParameter="TrimWhitespace"  Style="{StaticResource IconButton}" HorizontalContentAlignment="Left" Padding="8,5" Click="TransformPopupItem_Click"/>
+                                <Button Content="Remove Extra Spaces"     Command="{Binding TransformCommand}" CommandParameter="RemoveSpaces"   Style="{StaticResource IconButton}" HorizontalContentAlignment="Left" Padding="8,5" Click="TransformPopupItem_Click"/>
+                                <Separator Margin="4,2"/>
+                                <Button Content="Base64 Encode"           Command="{Binding TransformCommand}" CommandParameter="Base64Encode"   Style="{StaticResource IconButton}" HorizontalContentAlignment="Left" Padding="8,5" Click="TransformPopupItem_Click"/>
+                                <Button Content="Base64 Decode"           Command="{Binding TransformCommand}" CommandParameter="Base64Decode"   Style="{StaticResource IconButton}" HorizontalContentAlignment="Left" Padding="8,5" Click="TransformPopupItem_Click"/>
+                                <Button Content="URL Encode"              Command="{Binding TransformCommand}" CommandParameter="UrlEncode"      Style="{StaticResource IconButton}" HorizontalContentAlignment="Left" Padding="8,5" Click="TransformPopupItem_Click"/>
+                                <Button Content="URL Decode"              Command="{Binding TransformCommand}" CommandParameter="UrlDecode"      Style="{StaticResource IconButton}" HorizontalContentAlignment="Left" Padding="8,5" Click="TransformPopupItem_Click"/>
+                                <Button Content="HTML Encode"             Command="{Binding TransformCommand}" CommandParameter="HtmlEncode"     Style="{StaticResource IconButton}" HorizontalContentAlignment="Left" Padding="8,5" Click="TransformPopupItem_Click"/>
+                                <Button Content="HTML Decode"             Command="{Binding TransformCommand}" CommandParameter="HtmlDecode"     Style="{StaticResource IconButton}" HorizontalContentAlignment="Left" Padding="8,5" Click="TransformPopupItem_Click"/>
+                                <Separator Margin="4,2"/>
+                                <Button Content="Reverse Text"            Command="{Binding TransformCommand}" CommandParameter="Reverse"        Style="{StaticResource IconButton}" HorizontalContentAlignment="Left" Padding="8,5" Click="TransformPopupItem_Click"/>
+                                <Button Content="Count Chars / Words / Lines" Command="{Binding TransformCommand}" CommandParameter="Count"     Style="{StaticResource IconButton}" HorizontalContentAlignment="Left" Padding="8,5" Click="TransformPopupItem_Click"/>
+                            </StackPanel>
+                        </Border>
+                    </Popup>
+
                     <!-- Secondary actions (left) -->
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
                         <Button Content="📌 Pin"
@@ -262,8 +349,27 @@
                                 Style="{StaticResource IconButton}"
                                 Command="{Binding ClearHistoryCommand}"
                                 Padding="8,4" FontFamily="Segoe UI" FontSize="12"
+                                Margin="0,0,4,0"
                                 Foreground="{StaticResource DangerBrush}"
                                 ToolTip="Clear all unpinned history"/>
+                        <!-- Transform: text items only -->
+                        <Button x:Name="TransformButton"
+                                Content="🔡 Transform"
+                                Style="{StaticResource IconButton}"
+                                Padding="8,4" FontFamily="Segoe UI" FontSize="12"
+                                Margin="0,0,4,0"
+                                Foreground="{StaticResource PrimaryBrush}"
+                                ToolTip="Transform text"
+                                Click="TransformButton_Click"
+                                Visibility="{Binding SelectedItemIsText, Converter={StaticResource BoolToVis}}"/>
+                        <!-- Open Folder: file items only -->
+                        <Button Content="📂 Open Folder"
+                                Style="{StaticResource IconButton}"
+                                Command="{Binding OpenFolderCommand}"
+                                Padding="8,4" FontFamily="Segoe UI" FontSize="12"
+                                Foreground="{StaticResource TextPrimaryBrush}"
+                                ToolTip="Open containing folder (Explorer)"
+                                Visibility="{Binding SelectedItemIsFiles, Converter={StaticResource BoolToVis}}"/>
                     </StackPanel>
 
                     <!-- Primary Copy action (right) + "Copied!" toast -->

@@ -28,6 +28,23 @@ public class ClipboardItem
     /// <summary>Thumbnail for image items (not persisted to disk).</summary>
     public BitmapSource? ImageThumbnail { get; set; }
 
+    /// <summary>Original pixel width of an image item (0 for non-image items).</summary>
+    public int ImageWidth { get; set; }
+
+    /// <summary>Original pixel height of an image item (0 for non-image items).</summary>
+    public int ImageHeight { get; set; }
+
+    /// <summary>E.g. "1920 × 1080" — empty for non-image items.</summary>
+    public string ImageDimensions =>
+        ImageWidth > 0 && ImageHeight > 0 ? $"{ImageWidth} × {ImageHeight}" : string.Empty;
+
+    /// <summary>File-type icon extracted from the first file path (null for non-file items).</summary>
+    public BitmapSource? FileIcon { get; set; }
+
+    /// <summary>Multi-line tooltip listing all file paths; null for non-file items (WPF hides null tooltips).</summary>
+    public string? FilePathsTooltip =>
+        FilePaths is { Length: > 0 } ? string.Join("\n", FilePaths) : null;
+
     public DateTime CapturedAt { get; init; } = DateTime.Now;
 
     public bool IsPinned { get; set; }

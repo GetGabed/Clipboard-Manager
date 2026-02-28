@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using System.Windows;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
@@ -147,6 +148,13 @@ public partial class HistoryWindow : Window
     }
 
     // ── Event handlers ────────────────────────────────────────────────────
+    private void TransformButton_Click(object sender, RoutedEventArgs e)
+        => TransformPopup.IsOpen = !TransformPopup.IsOpen;
+
+    /// <summary>Close the transform popup after any transform item is clicked.</summary>
+    private void TransformPopupItem_Click(object sender, RoutedEventArgs e)
+        => TransformPopup.IsOpen = false;
+
     private void Header_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         => DragMove();
 
@@ -197,6 +205,16 @@ public partial class HistoryWindow : Window
                 e.Handled = true;
                 break;
 
+            case Key.Space:
+                // Space key: show/hide the thumbnail tooltip for the selected image item
+                if (ViewModel.SelectedItem?.ContentType == ClipboardContentType.Image &&
+                    ViewModel.SelectedItem.ImageThumbnail is not null)
+                {
+                    OpenImagePreview(ViewModel.SelectedItem);
+                    e.Handled = true;
+                }
+                break;
+
             case Key.Down:
                 // Move focus from search box into the list
                 if (!ItemsListBox.IsFocused)
@@ -209,5 +227,42 @@ public partial class HistoryWindow : Window
                 break;
         }
     }
-}
 
+    // ── Image preview (Space key) ─────────────────────────────────────────
+    private Popup? _imagePreviewPopup;
+
+    private void OpenImagePreview(ClipboardItem item)
+    {
+        if (_imagePreviewPopup is { IsOpen: true })
+        {
+            _imagePreviewPopup.IsOpen = false;
+            return;
+        }
+
+        _imagePreviewPopup = new Popup
+        {
+            Placement        = PlacementMode.Center,
+            PlacementTarget  = ItemsListBox,
+            StaysOpen        = false,
+            AllowsTransparency = true,
+            PopupAnimation   = PopupAnimation.Fade,
+            Child            = new System.Windows.Controls.Border
+            {
+                Background      = new SolidColorBrush(Color.FromArgb(240, 20, 20, 20)),
+                CornerRadius    = new CornerRadius(8),
+                Padding         = new Thickness(8),
+                MaxWidth        = 700,
+                MaxHeight       = 550,
+                Child           = new System.Windows.Controls.Image
+                {
+                    Source      = item.ImageThumbnail,
+                    MaxWidth    = 680,
+                    MaxHeight   = 530,
+                    Stretch     = System.Windows.Media.Stretch.Uniform
+                }
+            }
+        };
+
+        _imagePreviewPopup.IsOpen = true;
+    }
+}
