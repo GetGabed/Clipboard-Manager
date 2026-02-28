@@ -9,9 +9,10 @@
         Background="{StaticResource SurfaceBrush}"
         WindowStartupLocation="CenterScreen">
 
-    <Window.Resources>
-        <ResourceDictionary Source="/Resources/Styles/Theme.xaml"/>
-    </Window.Resources>
+    <!--
+        Theme.xaml is intentionally NOT merged here; it lives in App.xaml so that
+        the runtime DarkColors.xaml override takes effect.
+    -->
 
     <Grid Margin="24">
         <Grid.RowDefinitions>

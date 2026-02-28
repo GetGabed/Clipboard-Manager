@@ -176,7 +176,9 @@
     <Style x:Key="SearchBox" TargetType="TextBox">
         <Setter Property="FontFamily"      Value="Segoe UI"/>
         <Setter Property="FontSize"        Value="14"/>
-        <Setter Property="Padding"         Value="36,8,12,8"/>
+        <!-- Padding is intentionally 0 — all inset is handled by the ContentHost margin
+             in the ControlTemplate below to avoid WPF's double-indent behaviour. -->
+        <Setter Property="Padding"         Value="0"/>
         <Setter Property="BorderBrush"     Value="{StaticResource BorderBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="Background"      Value="{StaticResource SurfaceAltBrush}"/>
@@ -193,13 +195,13 @@
                         <Grid>
                             <TextBlock x:Name="placeholder"
                                        Text="Search clipboard history…"
-                                       Margin="36,0,12,0"
+                                       Margin="34,8,12,8"
                                        VerticalAlignment="Center"
                                        Foreground="{StaticResource TextSecondaryBrush}"
                                        IsHitTestVisible="False"
                                        Visibility="Collapsed"/>
                             <ScrollViewer x:Name="PART_ContentHost"
-                                          Margin="36,0,12,0"
+                                          Margin="34,8,12,8"
                                           Padding="0"
                                           VerticalAlignment="Center"/>
                         </Grid>

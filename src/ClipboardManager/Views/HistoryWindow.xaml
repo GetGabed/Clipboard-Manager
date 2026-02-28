@@ -16,15 +16,14 @@
         Focusable="True"
         Opacity="0">
 
+    <!--
+        Theme.xaml is intentionally NOT merged here; it lives in App.xaml so that
+        the runtime DarkColors.xaml override (also in App.Resources) takes effect.
+    -->
     <Window.Resources>
-        <ResourceDictionary>
-            <ResourceDictionary.MergedDictionaries>
-                <ResourceDictionary Source="/Resources/Styles/Theme.xaml"/>
-            </ResourceDictionary.MergedDictionaries>
-            <BooleanToVisibilityConverter x:Key="BoolToVis"/>
-            <helpers:TimestampConverter      x:Key="TimestampConv"/>
-            <helpers:ZeroToVisibleConverter  x:Key="ZeroToVis"/>
-        </ResourceDictionary>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+        <helpers:TimestampConverter      x:Key="TimestampConv"/>
+        <helpers:ZeroToVisibleConverter  x:Key="ZeroToVis"/>
     </Window.Resources>
 
     <!-- Drop shadow outer container -->
