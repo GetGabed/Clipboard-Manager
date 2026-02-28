@@ -68,7 +68,7 @@
                     <!-- Right: Pinned-only toggle + Close -->
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
                         <ToggleButton IsChecked="{Binding ShowPinnedOnly}"
-                                      Style="{StaticResource IconButton}"
+                                      Style="{StaticResource IconToggleButton}"
                                       Padding="6,3" Margin="0,0,6,0"
                                       ToolTip="Show pinned items only">
                             <TextBlock Text="★" FontSize="14" Foreground="#FFFFC107"/>
