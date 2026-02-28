@@ -37,16 +37,26 @@ public class ClipboardStorageService : IClipboardStorageService
 
     public void Add(ClipboardItem item)
     {
+        ClipboardItem toNotify;
         lock (_lock)
         {
-            // Skip duplicates (compare against the most-recent item)
-            if (_buffer.Count > 0 && item.IsDuplicateOf(_buffer.Last()))
-                return;
-
-            _buffer.PushBack(item);
+            // Check for a duplicate anywhere in history (not just the most-recent item).
+            // If found, promote the existing entry to the top — e.g. copy A → B → A again
+            // should move the original A to the top rather than creating a second A.
+            var existing = _buffer.ToList().FirstOrDefault(i => item.IsDuplicateOf(i));
+            if (existing is not null)
+            {
+                _buffer.Promote(existing);
+                toNotify = existing;
+            }
+            else
+            {
+                _buffer.PushBack(item);
+                toNotify = item;
+            }
         }
 
-        ItemAdded?.Invoke(this, item);
+        ItemAdded?.Invoke(this, toNotify);
     }
 
     public void Remove(ClipboardItem item)

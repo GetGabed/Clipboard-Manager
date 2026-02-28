@@ -244,6 +244,34 @@ public class ClipboardStorageServiceTests
         // pinned should still be present even if it's older
         Assert.Contains(svc.Items, i => i.TextContent == "pinned");
     }
+
+    [Fact]
+    public void Add_NonConsecutiveDuplicate_PromotesToTopWithoutNewEntry()
+    {
+        // Reproduce: copy A → copy B → copy A again must not create two A entries.
+        var svc = new ClipboardStorageService(10);
+        svc.Add(Text("A"));
+        svc.Add(Text("B"));
+        svc.Add(Text("A")); // re-copy A
+
+        Assert.Equal(2, svc.Items.Count);           // still only A and B
+        Assert.Equal("A", svc.Items[0].TextContent); // A is now at the top
+        Assert.Equal("B", svc.Items[1].TextContent);
+    }
+
+    [Fact]
+    public void Add_NonConsecutiveDuplicate_FiringItemAddedAllowsUiRefresh()
+    {
+        var svc = new ClipboardStorageService(10);
+        int fired = 0;
+        svc.ItemAdded += (_, _) => fired++;
+
+        svc.Add(Text("A"));
+        svc.Add(Text("B"));
+        svc.Add(Text("A")); // re-copy A — should still fire ItemAdded so the UI refreshes
+
+        Assert.Equal(3, fired);
+    }
 }
 
 // ── TextTransformHelper ───────────────────────────────────────────────────────
