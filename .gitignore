@@ -1,0 +1,35 @@
+# Generated files
+bin/
+obj/
+*.user
+.vs/
+
+# Build outputs
+publish/
+release/
+
+# Local planning notes (never pushed)
+next-steps/
+
+# NuGet
+packages/
+*.nupkg
+
+# Rider / Resharper
+*.sln.iml
+_ReSharper*/
+
+# Logs
+*.log
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Test results
+TestResults/
+coverage/
+*.coverage
+
+# Settings (user-specific)
+src/ClipboardManager/appsettings.Development.json
