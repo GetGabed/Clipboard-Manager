@@ -17,8 +17,11 @@ public static class StartupHelper
 
             if (enable)
             {
-                var exePath = Environment.ProcessPath ?? System.Reflection.Assembly
-                    .GetExecutingAssembly().Location;
+                // Environment.ProcessPath is reliable in .NET 6+ and works in single-file apps.
+                // Process.MainModule.FileName is the fallback for edge cases.
+                var exePath = Environment.ProcessPath
+                    ?? System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName
+                    ?? AppContext.BaseDirectory + AppName + ".exe";
                 key.SetValue(AppName, $"\"{exePath}\"");
             }
             else
