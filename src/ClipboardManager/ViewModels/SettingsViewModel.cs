@@ -74,6 +74,38 @@ public class SettingsViewModel : BaseViewModel
     public string HotkeyDisplay => _settings.Hotkey.ToString();
 
     /// <summary>
+    /// Comma-separated list of process names to exclude from clipboard capture.
+    /// Bound to a TextBox in SettingsWindow.
+    /// </summary>
+    public string ExcludedApps
+    {
+        get => string.Join(", ", _settings.ExcludedApps);
+        set
+        {
+            var list = value
+                .Split(new[] { ',', ';', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(s => s.Trim().ToLowerInvariant())
+                .Where(s => s.Length > 0)
+                .ToList();
+            _settings.ExcludedApps = list;
+            OnPropertyChanged();
+        }
+    }
+
+    public int AutoExpireDays
+    {
+        get => _settings.AutoExpireDays;
+        set
+        {
+            if (_settings.AutoExpireDays != value)
+            {
+                _settings.AutoExpireDays = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    /// <summary>
     /// Called by <see cref="Views.SettingsWindow"/> when the user presses a new
     /// key combination in the hotkey capture box.
     /// </summary>

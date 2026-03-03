@@ -32,4 +32,7 @@ public interface IClipboardStorageService
     /// preventing races between the UI thread and any background buffer operations.
     /// </summary>
     void SetPinned(ClipboardItem item, bool pinned);
+
+    /// <summary>Atomically increments the copy-count for <paramref name="item"/>.</summary>
+    void IncrementCopyCount(ClipboardItem item);
 }

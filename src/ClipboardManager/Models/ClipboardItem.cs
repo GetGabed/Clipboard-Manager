@@ -1,3 +1,4 @@
+using Newtonsoft.Json;
 using System;
 using System.Windows.Media.Imaging;
 
@@ -54,6 +55,14 @@ public class ClipboardItem
     public DateTime CapturedAt { get; init; } = DateTime.Now;
 
     public bool IsPinned { get; set; }
+
+    /// <summary>Number of times this item has been re-copied from history.</summary>
+    [JsonProperty("copyCount")]
+    public int CopyCount { get; set; }
+
+    /// <summary>True when the text content matched a sensitive-data pattern at capture time.</summary>
+    [JsonProperty("isSensitive")]
+    public bool IsSensitive { get; set; }
 
     /// <summary>Short preview string shown in the history list.</summary>
     public string Preview

@@ -28,6 +28,28 @@ public class AppSettings
 
     [JsonProperty("historyWindowHeight")]
     public double HistoryWindowHeight { get; set; } = 600;
+
+    /// <summary>Last remembered X position of the history window. Null = position near cursor.</summary>
+    [JsonProperty("historyWindowLeft")]
+    public double? HistoryWindowLeft { get; set; }
+
+    /// <summary>Last remembered Y position of the history window. Null = position near cursor.</summary>
+    [JsonProperty("historyWindowTop")]
+    public double? HistoryWindowTop { get; set; }
+
+    /// <summary>
+    /// Process names (without .exe) whose clipboard activity should be silently ignored.
+    /// Case-insensitive partial match. Example: ["keepass", "1password", "bitwarden"]
+    /// </summary>
+    [JsonProperty("excludedApps")]
+    public List<string> ExcludedApps { get; set; } = new();
+
+    /// <summary>
+    /// Automatically remove unpinned items older than this many days on startup.
+    /// 0 = never auto-expire.
+    /// </summary>
+    [JsonProperty("autoExpireDays")]
+    public int AutoExpireDays { get; set; } = 0;
 }
 
 public class HotkeyConfig

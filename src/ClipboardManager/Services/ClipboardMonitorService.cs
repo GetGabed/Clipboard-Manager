@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
+using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
@@ -28,14 +29,22 @@ public class ClipboardMonitorService : IDisposable
     [DllImport("gdi32.dll")]
     private static extern bool DeleteObject(IntPtr hObject);
 
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetForegroundWindow();
+
+    [DllImport("user32.dll")]
+    private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+
     private readonly IClipboardStorageService _storage;
+    private readonly SettingsService? _settings;
     private HwndSource? _hwndSource;
     private bool _suppress;
     private bool _disposed;
 
-    public ClipboardMonitorService(IClipboardStorageService storage)
+    public ClipboardMonitorService(IClipboardStorageService storage, SettingsService? settings = null)
     {
-        _storage = storage;
+        _storage  = storage;
+        _settings = settings;
     }
 
     /// <summary>
@@ -80,6 +89,9 @@ public class ClipboardMonitorService : IDisposable
     {
         try
         {
+            // Skip capture if the clipboard change came from an excluded application
+            if (IsFromExcludedApp()) return;
+
             // WM_CLIPBOARDUPDATE arrives on the UI thread — read directly.
             if (Clipboard.ContainsText())
             {
@@ -89,7 +101,8 @@ public class ClipboardMonitorService : IDisposable
                     _storage.Add(new ClipboardItem
                     {
                         ContentType = ClipboardContentType.Text,
-                        TextContent = text
+                        TextContent = text,
+                        IsSensitive = IsSensitiveText(text)
                     });
                 }
             }
@@ -128,6 +141,48 @@ public class ClipboardMonitorService : IDisposable
             // Clipboard can be locked by other processes — log and continue
             Log.Warning(ex, "[ClipboardMonitor] Clipboard read failed");
         }
+    }
+
+    /// <summary>Returns true if the current foreground window belongs to an excluded process.</summary>
+    private bool IsFromExcludedApp()
+    {
+        if (_settings is null) return false;
+        var excluded = _settings.Current.ExcludedApps;
+        if (excluded.Count == 0) return false;
+        try
+        {
+            var hwnd = GetForegroundWindow();
+            GetWindowThreadProcessId(hwnd, out uint pid);
+            var name = System.Diagnostics.Process.GetProcessById((int)pid)
+                                                 .ProcessName
+                                                 .ToLowerInvariant();
+            return excluded.Any(e => name.Contains(e.ToLowerInvariant().TrimEnd('.')));
+        }
+        catch { return false; }
+    }
+
+    // ── Sensitive content detection ───────────────────────────────────────
+    private static readonly string[] _sensitiveKeywords =
+        ["password", "passwd", "token", "secret", "api_key", "api-key", "bearer", "private_key", "access_key"];
+
+    private static readonly Regex _longHexRegex =
+        new(@"\b[0-9a-fA-F]{32,}\b", RegexOptions.Compiled);
+
+    /// <summary>
+    /// Returns true when <paramref name="text"/> looks like it may contain a password,
+    /// token, or other sensitive value. Scan is capped at 4 KB to stay fast.
+    /// </summary>
+    private static bool IsSensitiveText(string text)
+    {
+        if (text.Length > 4096) return false;
+        var lower = text.ToLowerInvariant();
+        foreach (var kw in _sensitiveKeywords)
+            if (lower.Contains(kw)) return true;
+        // JWT-like token (header.payload.signature, base64url)
+        if (lower.StartsWith("eyj") && text.Contains('.')) return true;
+        // Long hex string (e.g. SHA-256 hash, GUID without dashes, raw key)
+        if (_longHexRegex.IsMatch(text)) return true;
+        return false;
     }
 
     /// <summary>

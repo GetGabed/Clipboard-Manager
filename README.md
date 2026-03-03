@@ -3,7 +3,8 @@
 [![CI](https://github.com/GetGabed/Clipboard-Manager/actions/workflows/ci.yml/badge.svg)](https://github.com/GetGabed/Clipboard-Manager/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/GetGabed/Clipboard-Manager)](https://github.com/GetGabed/Clipboard-Manager/releases/latest)
 [![License](https://img.shields.io/github/license/GetGabed/Clipboard-Manager)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-99%20passing-brightgreen)](#testing)
+[![Tests](https://img.shields.io/badge/tests-122%20passing-brightgreen)](#testing)
+[![Changelog](https://img.shields.io/badge/changelog-v1.0.0-blue)](CHANGELOG.md)
 
 A lightweight, high-performance Windows system-tray application that captures and stores your clipboard history — text, images, and files.
 
@@ -19,9 +20,13 @@ A lightweight, high-performance Windows system-tray application that captures an
 - 🖱️ **Right-click context menu** — Copy / Pin / Transform / Delete without lifting your hands
 - 🌙 **Dark mode** — live toggle in Settings (no restart required); also activates on system High Contrast
 - 🔒 **Encrypted history** — `history.json` protected with Windows DPAPI (current-user scope)
-- 📝 **Structured logging** — rolling log file at `%APPDATA%\ClipboardManager\logs\app-.log`; clipboard content is never written to the log
+- �️ **Excluded-app list** — silently skip capture from password managers and other sensitive apps (configurable)
+- 🔒 **Sensitive-content badge** — items matching password/token/key patterns are visually flagged
+- ⏱️ **Auto-expire** — unpinned items older than N days are automatically removed (configurable)
+- 📊 **Copy frequency tracking** — tracks how often each item is re-used across sessions
+- 📝 **Structured logging** — rolling log file at `%APPDATA%\ClipboardManager\logs\app-.log`; clipboard content is never written
 - 🗑️ **Per-item delete** and bulk **Clear Unpinned**
-- ⚙️ **Settings** — max history size, start-with-Windows, dark mode, hotkey, disk persistence, window size
+- ⚙️ **Settings** — max history, auto-expire, exclude apps, start-with-Windows, dark mode, hotkey, disk persistence
 - 💾 **Optional persistence** — history survives restarts via `%APPDATA%\ClipboardManager`
 - 🚀 **Low footprint** — ~73 MB self-contained single EXE, targets < 500 ms startup
 

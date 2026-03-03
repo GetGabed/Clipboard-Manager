@@ -28,6 +28,7 @@ public partial class App : Application
     private HistoryWindow?  _historyWindow;
     private SettingsWindow? _settingsWindow;
     private TaskbarIcon     _trayIcon = null!;
+    private System.Windows.Controls.MenuItem? _historyMenuItem;
 
     // ── Startup ───────────────────────────────────────────────────────────
     protected override void OnStartup(StartupEventArgs e)
@@ -56,7 +57,7 @@ public partial class App : Application
         // Boot services
         _settingsService = new SettingsService();
         _storageService  = new ClipboardStorageService(_settingsService.Current.MaxHistoryItems);
-        _monitor         = new ClipboardMonitorService(_storageService);
+        _monitor         = new ClipboardMonitorService(_storageService, _settingsService);
         _hotkeyService   = new HotkeyService(_settingsService.Current.Hotkey);
         _persistence     = new HistoryPersistenceService();
 
@@ -148,7 +149,7 @@ public partial class App : Application
 
         if (_historyWindow is null)
         {
-            var vm = new HistoryViewModel(_storageService, _monitor);
+            var vm = new HistoryViewModel(_storageService, _monitor, _settingsService);
             _historyWindow = new HistoryWindow(vm, _settingsService);
         }
 
@@ -161,21 +162,24 @@ public partial class App : Application
     {
         var menu = new System.Windows.Controls.ContextMenu();
 
-        MenuItem("📋  Open History  (Ctrl+Shift+V)", () => ToggleHistoryWindow(), menu);
+        _historyMenuItem = AddMenuItem(
+            $"\uD83D\uDCCB  Open History  ({_settingsService.Current.Hotkey})",
+            () => ToggleHistoryWindow(), menu);
         menu.Items.Add(new System.Windows.Controls.Separator());
-        MenuItem("⚙️  Settings",  OpenSettings, menu);
+        AddMenuItem("\u2699\uFE0F  Settings",  OpenSettings, menu);
         menu.Items.Add(new System.Windows.Controls.Separator());
-        MenuItem("✕  Exit",  () => Shutdown(), menu);
+        AddMenuItem("\u2715  Exit",  () => Shutdown(), menu);
 
         return menu;
     }
 
-    private static void MenuItem(string header, Action action,
-                                 System.Windows.Controls.ContextMenu menu)
+    private static System.Windows.Controls.MenuItem AddMenuItem(
+        string header, Action action, System.Windows.Controls.ContextMenu menu)
     {
         var item = new System.Windows.Controls.MenuItem { Header = header };
         item.Click += (_, _) => action();
         menu.Items.Add(item);
+        return item;
     }
 
     // ── Settings window ───────────────────────────────────────────────────
@@ -198,7 +202,12 @@ public partial class App : Application
         // If hotkey changed, update the running service without restart.
         var cur = _settingsService.Current.Hotkey;
         if (cur.Modifiers != prevModifiers || cur.Key != prevKey)
+        {
             _hotkeyService.UpdateConfig(cur);
+            // Sync the tray menu label so it always shows the current shortcut
+            if (_historyMenuItem is not null)
+                _historyMenuItem.Header = $"\uD83D\uDCCB  Open History  ({cur})";
+        }
     }
 
     // ── Shutdown ──────────────────────────────────────────────────────────

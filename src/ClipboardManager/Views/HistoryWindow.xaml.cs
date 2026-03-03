@@ -82,6 +82,13 @@ public partial class HistoryWindow : Window
             _settingsService.Current.HistoryWindowWidth  = Width;
             _settingsService.Current.HistoryWindowHeight = Height;
         };
+
+        // Persist position whenever the user drags the window
+        LocationChanged += (_, _) =>
+        {
+            _settingsService.Current.HistoryWindowLeft = Left;
+            _settingsService.Current.HistoryWindowTop  = Top;
+        };
     }
 
     // ── Focus helpers ─────────────────────────────────────────────────────
@@ -94,11 +101,31 @@ public partial class HistoryWindow : Window
     // ── Show / Hide with fade ──────────────────────────────────────────────
     public void ShowAtCursor()
     {
-        PositionNearCursor();
+        // Restore last saved position if valid; otherwise position near the cursor
+        var s = _settingsService.Current;
+        if (s.HistoryWindowLeft.HasValue && s.HistoryWindowTop.HasValue &&
+            IsPositionOnScreen(s.HistoryWindowLeft.Value, s.HistoryWindowTop.Value))
+        {
+            Left = s.HistoryWindowLeft.Value;
+            Top  = s.HistoryWindowTop.Value;
+        }
+        else
+        {
+            PositionNearCursor();
+        }
         Show();
         Activate();
         FocusSearch();
         FadeIn();
+    }
+
+    private static bool IsPositionOnScreen(double left, double top)
+    {
+        double vl = SystemParameters.VirtualScreenLeft;
+        double vt = SystemParameters.VirtualScreenTop;
+        double vr = vl + SystemParameters.VirtualScreenWidth;
+        double vb = vt + SystemParameters.VirtualScreenHeight;
+        return left >= vl && left < vr && top >= vt && top < vb;
     }
 
     private void FadeIn()
@@ -225,9 +252,19 @@ public partial class HistoryWindow : Window
                 break;
 
             case Key.Enter:
-                if (ViewModel.CopySelectedCommand.CanExecute(null))
+                if (Keyboard.Modifiers == ModifierKeys.Control)
+                {
+                    // Ctrl+Enter: copy and close
+                    if (ViewModel.CopySelectedCommand.CanExecute(null))
+                        ViewModel.CopySelectedCommand.Execute(null);
+                    HideWithFade();
+                    e.Handled = true;
+                }
+                else if (ViewModel.CopySelectedCommand.CanExecute(null))
+                {
                     ViewModel.CopySelectedCommand.Execute(null);
-                e.Handled = true;
+                    e.Handled = true;
+                }
                 break;
 
             case Key.Delete:

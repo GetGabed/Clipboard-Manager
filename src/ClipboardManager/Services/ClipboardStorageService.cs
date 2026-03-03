@@ -13,6 +13,7 @@ public class ClipboardStorageService : IClipboardStorageService
 {
     private readonly CircularBuffer<ClipboardItem> _buffer;
     private readonly object _lock = new();
+    private List<ClipboardItem>? _cachedItems;   // newest-first snapshot; null = dirty
 
     public event EventHandler<ClipboardItem>? ItemAdded;
 
@@ -23,9 +24,12 @@ public class ClipboardStorageService : IClipboardStorageService
         {
             lock (_lock)
             {
-                var list = _buffer.ToList();
-                list.Reverse();   // back of buffer = newest → index 0
-                return list;
+                if (_cachedItems is null)
+                {
+                    _cachedItems = _buffer.ToList();
+                    _cachedItems.Reverse();
+                }
+                return _cachedItems;
             }
         }
     }
@@ -40,6 +44,7 @@ public class ClipboardStorageService : IClipboardStorageService
         ClipboardItem toNotify;
         lock (_lock)
         {
+            _cachedItems = null;  // invalidate
             // Check for a duplicate anywhere in history (not just the most-recent item).
             // If found, promote the existing entry to the top — e.g. copy A → B → A again
             // should move the original A to the top rather than creating a second A.
@@ -61,18 +66,19 @@ public class ClipboardStorageService : IClipboardStorageService
 
     public void Remove(ClipboardItem item)
     {
-        lock (_lock) { _buffer.Remove(item); }
+        lock (_lock) { _cachedItems = null; _buffer.Remove(item); }
     }
 
     public void Clear()
     {
-        lock (_lock) { _buffer.Clear(); }
+        lock (_lock) { _cachedItems = null; _buffer.Clear(); }
     }
 
     public void ClearUnpinned()
     {
         lock (_lock)
         {
+            _cachedItems = null;
             var toRemove = _buffer.Where(i => !i.IsPinned).ToList();
             foreach (var item in toRemove)
                 _buffer.Remove(item);
@@ -81,18 +87,24 @@ public class ClipboardStorageService : IClipboardStorageService
 
     public void Promote(ClipboardItem item)
     {
-        lock (_lock) { _buffer.Promote(item); }
+        lock (_lock) { _cachedItems = null; _buffer.Promote(item); }
     }
 
     public void Resize(int newCapacity)
     {
-        lock (_lock) { _buffer.Resize(newCapacity); }
+        lock (_lock) { _cachedItems = null; _buffer.Resize(newCapacity); }
     }
 
     /// <inheritdoc/>
     public void SetPinned(ClipboardItem item, bool pinned)
     {
         lock (_lock) { item.IsPinned = pinned; }
+    }
+
+    /// <inheritdoc/>
+    public void IncrementCopyCount(ClipboardItem item)
+    {
+        lock (_lock) { item.CopyCount++; }
     }
 
     public void SetAsCurrentClipboard(ClipboardItem item)

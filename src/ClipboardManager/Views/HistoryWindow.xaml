@@ -113,8 +113,7 @@
             <!-- ── Status bar ─────────────────────────────────────── -->
             <TextBlock Grid.Row="2" Margin="14,2,14,4"
                        Style="{StaticResource SubtitleText}"
-                       Text="{Binding FilteredItems.Count,
-                              StringFormat='Showing {0} result(s) — Press Enter or ⧉ to copy'}"/>
+                       Text="{Binding FilterStatusText}"/>
 
             <!-- ── Items list ──────────────────────────────────────── -->
             <Grid Grid.Row="3">
@@ -248,6 +247,14 @@
                                 <!-- Preview text + subtitle (image dims / file info) -->
                                 <StackPanel Grid.Column="2" VerticalAlignment="Center"
                                             ToolTip="{Binding FilePathsTooltip}">
+                                    <!-- Sensitive-content badge (shown inline when IsSensitive) -->
+                                    <TextBlock Text="\uD83D\uDD12 Sensitive content"
+                                               FontFamily="Segoe UI" FontSize="10" FontWeight="SemiBold"
+                                               Foreground="{StaticResource DangerBrush}"
+                                               Margin="0,0,0,2"
+                                               ToolTip="This item may contain sensitive content (password, token, or key pattern detected)"
+                                               Visibility="{Binding IsSensitive,
+                                                            Converter={StaticResource BoolToVis}}"/>
                                     <TextBlock Style="{StaticResource BodyText}"
                                                Text="{Binding Preview}"/>
 

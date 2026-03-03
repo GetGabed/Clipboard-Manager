@@ -1,17 +1,17 @@
 ; Clipboard Manager — Inno Setup 6 script
 ; Compile:  iscc installer\ClipboardManager.iss
-; Output:   release\ClipboardManager-Setup-v0.7.0.exe
+; Output:   release\ClipboardManager-Setup-v1.0.0.exe
 
 [Setup]
 AppName=Clipboard Manager
-AppVersion=0.7.0
+AppVersion=1.0.0
 AppPublisher=GetGabed
 AppPublisherURL=https://github.com/GetGabed/Clipboard-Manager
 AppSupportURL=https://github.com/GetGabed/Clipboard-Manager/issues
 DefaultDirName={autopf}\ClipboardManager
 DefaultGroupName=Clipboard Manager
 OutputDir=..\release
-OutputBaseFilename=ClipboardManager-Setup-v0.7.0
+OutputBaseFilename=ClipboardManager-Setup-v1.0.0
 Compression=lzma2/ultra64
 SolidCompression=yes
 SetupIconFile=..\src\ClipboardManager\Resources\Icons\app.ico
