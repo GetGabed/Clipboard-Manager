@@ -12,11 +12,25 @@ namespace ClipboardManager.Services;
 /// </summary>
 public class HistoryPersistenceService
 {
-    private static readonly string DataDir =
+    private static readonly string DefaultDataDir =
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                      "ClipboardManager");
 
-    private static readonly string HistoryPath = Path.Combine(DataDir, "history.json");
+    private readonly string _dataDir;
+    private readonly string _historyPath;
+
+    /// <summary>Production constructor — uses %AppData%\ClipboardManager\history.json.</summary>
+    public HistoryPersistenceService() : this(DefaultDataDir) { }
+
+    /// <summary>
+    /// Testable constructor — uses the supplied directory so tests can
+    /// redirect reads/writes to a temp folder without touching AppData.
+    /// </summary>
+    internal HistoryPersistenceService(string dataDir)
+    {
+        _dataDir     = dataDir;
+        _historyPath = Path.Combine(dataDir, "history.json");
+    }
 
     /// <summary>
     /// Saves the text-only items from <paramref name="items"/>, capped at
@@ -37,9 +51,9 @@ public class HistoryPersistenceService
                 })
                 .ToList();
 
-            Directory.CreateDirectory(DataDir);
+            Directory.CreateDirectory(_dataDir);
             var json = JsonConvert.SerializeObject(textItems, Formatting.Indented);
-            File.WriteAllText(HistoryPath, json);
+            File.WriteAllText(_historyPath, json);
         }
         catch (Exception ex)
         {
@@ -56,9 +70,9 @@ public class HistoryPersistenceService
     {
         try
         {
-            if (!File.Exists(HistoryPath)) return new();
+            if (!File.Exists(_historyPath)) return new();
 
-            var json      = File.ReadAllText(HistoryPath);
+            var json      = File.ReadAllText(_historyPath);
             var persisted = JsonConvert.DeserializeObject<List<PersistedItem>>(json) ?? new();
 
             return persisted

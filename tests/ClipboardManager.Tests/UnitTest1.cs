@@ -427,7 +427,7 @@ public class HistoryPersistenceServiceTests : IDisposable
         };
         foreach (var i in items) svc.Add(i);
 
-        var persistence = new HistoryPersistenceService();
+        var persistence = new HistoryPersistenceService(_tempDir);
         persistence.Save(svc.Items, 100);
 
         var loaded = persistence.Load(100);
@@ -447,7 +447,7 @@ public class HistoryPersistenceServiceTests : IDisposable
         var imageItem = new ClipboardItem { ContentType = ClipboardContentType.Image };
         svc.Add(imageItem);
 
-        var persistence = new HistoryPersistenceService();
+        var persistence = new HistoryPersistenceService(_tempDir);
         persistence.Save(svc.Items, 100);
         var loaded = persistence.Load(100);
 
@@ -457,10 +457,9 @@ public class HistoryPersistenceServiceTests : IDisposable
     [Fact]
     public void Load_WhenNoFileExists_ReturnsEmptyList()
     {
-        var persistence = new HistoryPersistenceService();
-        // Use a guaranteed non-existent path by temporarily ensuring no history file
-        // (default service uses %AppData%\ClipboardManager\history.json)
+        var persistence = new HistoryPersistenceService(_tempDir);
+        // _tempDir is a fresh unique temp directory with no history.json — guaranteed empty
         var loaded = persistence.Load(100);
-        // Should either be empty (no file) or valid items — never throw
         Assert.NotNull(loaded);
+        Assert.Empty(loaded);
     }}

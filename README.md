@@ -27,8 +27,9 @@ A lightweight, high-performance Windows system-tray application that captures an
 
 ## Screenshots
 
-> _Screenshots live in [`docs/screenshots/`](docs/screenshots/).
-> Add `history-window-dark.png` and `demo.gif` there after capturing them._
+![Demo](docs/screenshots/demo.gif)
+
+![History Window – Dark Mode](docs/screenshots/history-window-dark.png)
 
 ---
 
