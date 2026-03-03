@@ -3,7 +3,7 @@
 [![CI](https://github.com/GetGabed/Clipboard-Manager/actions/workflows/ci.yml/badge.svg)](https://github.com/GetGabed/Clipboard-Manager/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/GetGabed/Clipboard-Manager)](https://github.com/GetGabed/Clipboard-Manager/releases/latest)
 [![License](https://img.shields.io/github/license/GetGabed/Clipboard-Manager)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-97%20passing-brightgreen)](#testing)
+[![Tests](https://img.shields.io/badge/tests-99%20passing-brightgreen)](#testing)
 
 A lightweight, high-performance Windows system-tray application that captures and stores your clipboard history — text, images, and files.
 
@@ -15,11 +15,13 @@ A lightweight, high-performance Windows system-tray application that captures an
 - 🔍 **Instant search** — fuzzy-filter across the full history as you type
 - 📌 **Pin items** — prevent pinned entries from being evicted
 - 🔄 **Text transforms** — 14 one-click transforms (UPPER, lower, Title, URL-encode, Base64, …)
-- ⌨️ **Global hotkey** — `Ctrl+Shift+V` summons / dismisses the history window from anywhere
+- ⌨️ **Rebindable global hotkey** — default `Ctrl+Shift+V`, change it live in Settings
 - 🖱️ **Right-click context menu** — Copy / Pin / Transform / Delete without lifting your hands
-- 🌙 **Dark mode** — automatic (system High Contrast) or manual toggle in Settings
+- 🌙 **Dark mode** — live toggle in Settings (no restart required); also activates on system High Contrast
+- 🔒 **Encrypted history** — `history.json` protected with Windows DPAPI (current-user scope)
+- 📝 **Structured logging** — rolling log file at `%APPDATA%\ClipboardManager\logs\app-.log`; clipboard content is never written to the log
 - 🗑️ **Per-item delete** and bulk **Clear Unpinned**
-- ⚙️ **Settings** — max history size, start-with-Windows, dark mode, disk persistence, window size
+- ⚙️ **Settings** — max history size, start-with-Windows, dark mode, hotkey, disk persistence, window size
 - 💾 **Optional persistence** — history survives restarts via `%APPDATA%\ClipboardManager`
 - 🚀 **Low footprint** — ~73 MB self-contained single EXE, targets < 500 ms startup
 
@@ -49,7 +51,7 @@ Grab the latest portable ZIP or installer from the [Releases](https://github.com
 
 | Shortcut | Action |
 |---|---|
-| `Ctrl + Shift + V` | Open / close the history window (global) |
+| `Ctrl + Shift + V` | Open / close the history window (default; rebindable in Settings) |
 | `Tab` | Navigate: Search → List → Pin → Delete → Clear → Copy |
 | `Enter` | Copy the selected item to clipboard |
 | `Space` | Toggle full-size preview (image items) |
@@ -111,7 +113,7 @@ Tests are in `tests/ClipboardManager.Tests/` and run with:
 dotnet test
 ```
 
-### Coverage by layer (testable units, v0.7.0)
+### Coverage by layer (testable units, v0.9.0)
 
 | Layer | Class | Line Coverage |
 |---|---|---|
@@ -148,7 +150,7 @@ src/ClipboardManager/
 │                      StartupHelper, TimestampConverter
 └── Resources/       – Styles (Theme.xaml, DarkColors.xaml), Icons
 tests/
-└── ClipboardManager.Tests/   – 97 xUnit unit tests
+└── ClipboardManager.Tests/   – 99 xUnit unit tests
 installer/
 └── ClipboardManager.iss      – Inno Setup 6 installer script
 scripts/
