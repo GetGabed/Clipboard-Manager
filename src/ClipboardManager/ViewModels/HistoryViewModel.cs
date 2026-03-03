@@ -5,6 +5,7 @@ using System.Windows.Input;
 using ClipboardManager.Helpers;
 using ClipboardManager.Models;
 using ClipboardManager.Services;
+using Serilog;
 
 namespace ClipboardManager.ViewModels;
 
@@ -212,7 +213,7 @@ public class HistoryViewModel : BaseViewModel, IDisposable
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"[HistoryViewModel] OpenFolder failed: {ex.Message}");
+            Log.Warning(ex, "[HistoryViewModel] OpenFolder failed");
         }
     }
 

@@ -1,11 +1,13 @@
 ﻿using System.Diagnostics;
 using System.Drawing;
+using System.IO;
 using System.Windows;
 using System.Windows.Interop;
 using ClipboardManager.Services;
 using ClipboardManager.ViewModels;
 using ClipboardManager.Views;
 using Hardcodet.Wpf.TaskbarNotification;
+using Serilog;
 
 namespace ClipboardManager;
 
@@ -36,6 +38,20 @@ public partial class App : Application
 
         // Enforce single instance
         if (!EnsureSingleInstance()) { Shutdown(); return; }
+
+        // Initialise structured logger — writes to %AppData%\ClipboardManager\logs\app-.log
+        // Clipboard content is NEVER logged; only metadata (counts, elapsed ms, errors).
+        var logDir = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "ClipboardManager", "logs");
+        Log.Logger = new LoggerConfiguration()
+            .MinimumLevel.Debug()
+            .WriteTo.File(
+                path: Path.Combine(logDir, "app-.log"),
+                rollingInterval: RollingInterval.Day,
+                retainedFileCountLimit: 7,
+                fileSizeLimitBytes: 5_000_000)
+            .CreateLogger();
 
         // Boot services
         _settingsService = new SettingsService();
@@ -75,17 +91,35 @@ public partial class App : Application
         _hotkeyService.HotkeyPressed += (_, _) => ToggleHistoryWindow();
 
         sw.Stop();
-        Debug.WriteLine($"[Startup] {sw.ElapsedMilliseconds} ms");
+        Log.Information("[Startup] complete in {ElapsedMs} ms", sw.ElapsedMilliseconds);
     }
 
-    // ── Dark mode ─────────────────────────────────────────────────────────
-    private void ApplyDarkMode()
+    // ── Theme (dark / light) ──────────────────────────────────────────────
+    private static readonly Uri DarkColorsUri =
+        new("Resources/Styles/DarkColors.xaml", UriKind.Relative);
+
+    /// <summary>
+    /// Applies or removes the dark colour overrides at runtime without requiring
+    /// a restart.  Safe to call from any thread that has dispatcher access.
+    /// </summary>
+    public void ApplyTheme(bool isDark)
     {
-        Resources.MergedDictionaries.Add(new ResourceDictionary
+        var dicts = Resources.MergedDictionaries;
+
+        // Remove any previously merged DarkColors dictionary
+        var existing = dicts.FirstOrDefault(
+            d => d.Source?.OriginalString?.Contains("DarkColors") == true ||
+                 d.Source == DarkColorsUri);
+        if (existing is not null) dicts.Remove(existing);
+
+        if (isDark)
         {
-            Source = new Uri("Resources/Styles/DarkColors.xaml", UriKind.Relative)
-        });
+            dicts.Add(new ResourceDictionary { Source = DarkColorsUri });
+        }
     }
+
+    // Keep old internal name for the startup call
+    private void ApplyDarkMode() => ApplyTheme(true);
 
     // ── Tray tooltip ──────────────────────────────────────────────────────
     private void UpdateTrayTooltip()
@@ -153,9 +187,18 @@ public partial class App : Application
             return;
         }
 
+        // Snapshot the hotkey before showing settings so we can detect changes.
+        var prevModifiers = _settingsService.Current.Hotkey.Modifiers;
+        var prevKey       = _settingsService.Current.Hotkey.Key;
+
         var vm = new SettingsViewModel(_settingsService, _storageService);
         _settingsWindow = new SettingsWindow(vm);
         _settingsWindow.ShowDialog();
+
+        // If hotkey changed, update the running service without restart.
+        var cur = _settingsService.Current.Hotkey;
+        if (cur.Modifiers != prevModifiers || cur.Key != prevKey)
+            _hotkeyService.UpdateConfig(cur);
     }
 
     // ── Shutdown ──────────────────────────────────────────────────────────
@@ -169,6 +212,8 @@ public partial class App : Application
         _monitor.Dispose();
         _trayIcon.Dispose();
         _mutex?.ReleaseMutex();
+        Log.Information("[App] exiting");
+        Log.CloseAndFlush();
         base.OnExit(e);
     }
 

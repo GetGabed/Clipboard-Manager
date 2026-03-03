@@ -46,12 +46,26 @@
                            Style="{StaticResource SubtitleText}"/>
             </StackPanel>
 
-            <!-- Global Hotkey (read-only for now) -->
+            <!-- Global Hotkey (capture on focus) -->
             <StackPanel Margin="0,0,0,16">
                 <TextBlock Text="Global hotkey" Style="{StaticResource BodyText}"
                            FontWeight="SemiBold"/>
-                <TextBlock Text="{Binding HotkeyDisplay}"
-                           Style="{StaticResource SubtitleText}" Margin="0,4,0,0"/>
+                <TextBlock Text="Click the box below then press a new key combination."
+                           Style="{StaticResource SubtitleText}" Margin="0,2,0,6"/>
+                <TextBox x:Name="HotkeyBox"
+                         Text="{Binding HotkeyDisplay, Mode=OneWay}"
+                         IsReadOnly="True"
+                         Width="200" HorizontalAlignment="Left"
+                         FontFamily="Segoe UI" FontSize="13"
+                         Padding="8,5"
+                         Background="{DynamicResource SurfaceAltBrush}"
+                         Foreground="{DynamicResource TextPrimaryBrush}"
+                         BorderBrush="{DynamicResource BorderBrush}"
+                         CaretBrush="{StaticResource PrimaryBrush}"
+                         PreviewKeyDown="HotkeyBox_PreviewKeyDown"
+                         GotFocus="HotkeyBox_GotFocus"
+                         LostFocus="HotkeyBox_LostFocus"
+                         ToolTip="Click here then press your desired key combination"/>
             </StackPanel>
 
             <!-- Toggles -->
@@ -60,7 +74,7 @@
                       FontFamily="Segoe UI" FontSize="13" Cursor="Hand"
                       Margin="0,0,0,12"/>
 
-            <CheckBox Content="Dark mode  (restart required)"
+            <CheckBox Content="Dark mode"
                       IsChecked="{Binding DarkMode}"
                       FontFamily="Segoe UI" FontSize="13" Cursor="Hand"
                       Margin="0,0,0,12"/>

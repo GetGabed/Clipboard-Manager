@@ -6,6 +6,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using ClipboardManager.Models;
 using System.Drawing;
+using Serilog;
 
 namespace ClipboardManager.Services;
 
@@ -125,7 +126,7 @@ public class ClipboardMonitorService : IDisposable
         catch (Exception ex)
         {
             // Clipboard can be locked by other processes — log and continue
-            System.Diagnostics.Debug.WriteLine($"[ClipboardMonitor] {ex.Message}");
+            Log.Warning(ex, "[ClipboardMonitor] Clipboard read failed");
         }
     }
 

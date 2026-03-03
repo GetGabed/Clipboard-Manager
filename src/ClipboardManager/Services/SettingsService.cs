@@ -1,6 +1,7 @@
 using System.IO;
 using Newtonsoft.Json;
 using ClipboardManager.Models;
+using Serilog;
 
 namespace ClipboardManager.Services;
 
@@ -42,7 +43,7 @@ public class SettingsService
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[SettingsService] Load failed: {ex.Message}");
+            Log.Warning(ex, "[SettingsService] Load failed, using defaults");
             Current = new AppSettings();
         }
     }
@@ -57,7 +58,7 @@ public class SettingsService
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[SettingsService] Save failed: {ex.Message}");
+            Log.Error(ex, "[SettingsService] Save failed");
         }
     }
 

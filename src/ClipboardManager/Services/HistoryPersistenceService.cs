@@ -1,7 +1,9 @@
-using System.Diagnostics;
 using System.IO;
+using System.Security.Cryptography;
+using System.Text;
 using ClipboardManager.Models;
 using Newtonsoft.Json;
+using Serilog;
 
 namespace ClipboardManager.Services;
 
@@ -52,12 +54,15 @@ public class HistoryPersistenceService
                 .ToList();
 
             Directory.CreateDirectory(_dataDir);
-            var json = JsonConvert.SerializeObject(textItems, Formatting.Indented);
-            File.WriteAllText(_historyPath, json);
+            var json  = JsonConvert.SerializeObject(textItems, Formatting.Indented);
+            var plain = Encoding.UTF8.GetBytes(json);
+            var cipher = ProtectedData.Protect(plain, null, DataProtectionScope.CurrentUser);
+            File.WriteAllBytes(_historyPath, cipher);
+            Log.Debug("[HistoryPersistence] Saved {Count} text items", textItems.Count);
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"[HistoryPersistence] Save failed: {ex.Message}");
+            Log.Error(ex, "[HistoryPersistence] Save failed");
         }
     }
 
@@ -72,10 +77,25 @@ public class HistoryPersistenceService
         {
             if (!File.Exists(_historyPath)) return new();
 
-            var json      = File.ReadAllText(_historyPath);
+            var fileBytes = File.ReadAllBytes(_historyPath);
+
+            string json;
+            try
+            {
+                // Attempt to decrypt (normal path for files saved after v0.9.0)
+                var plain = ProtectedData.Unprotect(fileBytes, null, DataProtectionScope.CurrentUser);
+                json = Encoding.UTF8.GetString(plain);
+            }
+            catch
+            {
+                // Migration path: file is still plain-text JSON from an older version
+                Log.Warning("[HistoryPersistence] Decryption failed — loading as plain JSON (migration)");
+                json = Encoding.UTF8.GetString(fileBytes);
+            }
+
             var persisted = JsonConvert.DeserializeObject<List<PersistedItem>>(json) ?? new();
 
-            return persisted
+            var result = persisted
                 .Take(maxItems)
                 .Select(p => new ClipboardItem
                 {
@@ -85,10 +105,13 @@ public class HistoryPersistenceService
                     CapturedAt  = p.CapturedAt
                 })
                 .ToList();
+
+            Log.Debug("[HistoryPersistence] Loaded {Count} items", result.Count);
+            return result;
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"[HistoryPersistence] Load failed: {ex.Message}");
+            Log.Error(ex, "[HistoryPersistence] Load failed");
             return new();
         }
     }

@@ -51,6 +51,9 @@ public class SettingsViewModel : BaseViewModel
             {
                 _settings.DarkMode = value;
                 OnPropertyChanged();
+                // Apply live — no restart required
+                if (Application.Current is App app)
+                    app.ApplyTheme(value);
             }
         }
     }
@@ -69,6 +72,16 @@ public class SettingsViewModel : BaseViewModel
     }
 
     public string HotkeyDisplay => _settings.Hotkey.ToString();
+
+    /// <summary>
+    /// Called by <see cref="Views.SettingsWindow"/> when the user presses a new
+    /// key combination in the hotkey capture box.
+    /// </summary>
+    public void UpdateHotkey(int modifiers, int key)
+    {
+        _settings.Hotkey = new HotkeyConfig { Modifiers = modifiers, Key = key };
+        OnPropertyChanged(nameof(HotkeyDisplay));
+    }
 
     public ICommand SaveCommand          { get; }
     public ICommand ResetCommand         { get; }
@@ -118,6 +131,7 @@ public class SettingsViewModel : BaseViewModel
         }
         catch (Exception ex)
         {
+            Serilog.Log.Warning(ex, "[SettingsViewModel] ExportHistory failed");
             MessageBox.Show($"Export failed: {ex.Message}", "Clipboard Manager",
                             MessageBoxButton.OK, MessageBoxImage.Warning);
         }

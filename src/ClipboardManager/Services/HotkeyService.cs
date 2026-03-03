@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices;
 using System.Windows.Interop;
 using ClipboardManager.Models;
+using Serilog;
 
 namespace ClipboardManager.Services;
 
@@ -54,8 +55,8 @@ public class HotkeyService : IDisposable
         bool ok = RegisterHotKey(_hwndSource.Handle, HotkeyId,
                                  (uint)_config.Modifiers, (uint)_config.Key);
         if (!ok)
-            System.Diagnostics.Debug.WriteLine(
-                $"[HotkeyService] RegisterHotKey failed (error {Marshal.GetLastWin32Error()})");
+            Log.Warning("[HotkeyService] RegisterHotKey failed (Win32 error {Code})",
+                        Marshal.GetLastWin32Error());
     }
 
     private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)

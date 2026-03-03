@@ -1,6 +1,7 @@
 using System.IO;
 using ClipboardManager.Models;
 using ClipboardManager.Services;
+using Newtonsoft.Json;
 
 namespace ClipboardManager.Tests;
 
@@ -64,5 +65,24 @@ public class HistoryPersistenceServiceTests : IDisposable
         var loaded = persistence.Load(100);
         Assert.NotNull(loaded);
         Assert.Empty(loaded);
+    }
+
+    [Fact]
+    public void Load_PlainTextJson_MigratesGracefully()
+    {
+        // Simulate a history.json written by an older version (plain UTF-8 JSON, no DPAPI)
+        var items = new[]
+        {
+            new { text = "migrated item", pinned = false, at = DateTime.UtcNow }
+        };
+        var json = Newtonsoft.Json.JsonConvert.SerializeObject(items);
+        Directory.CreateDirectory(_tempDir);
+        File.WriteAllText(Path.Combine(_tempDir, "history.json"), json);
+
+        var persistence = new HistoryPersistenceService(_tempDir);
+        var loaded = persistence.Load(100);
+
+        Assert.Single(loaded);
+        Assert.Equal("migrated item", loaded[0].TextContent);
     }
 }
