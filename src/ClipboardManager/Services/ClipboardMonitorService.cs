@@ -155,7 +155,7 @@ public class ClipboardMonitorService : IDisposable
 
     private static BitmapSource CreateThumbnail(BitmapSource source)
     {
-        const int maxSize = 256;
+        const int maxSize = 640;
         BitmapSource result;
         if (source.PixelWidth <= maxSize && source.PixelHeight <= maxSize)
         {

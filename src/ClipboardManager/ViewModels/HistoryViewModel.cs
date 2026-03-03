@@ -147,7 +147,7 @@ public class HistoryViewModel : BaseViewModel, IDisposable
     private void PinSelected()
     {
         if (SelectedItem is null) return;
-        SelectedItem.IsPinned = !SelectedItem.IsPinned;
+        _storage.SetPinned(SelectedItem, !SelectedItem.IsPinned);
         OnPropertyChanged(nameof(SelectedItem));
         RefreshFilter();
     }

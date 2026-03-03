@@ -10,14 +10,22 @@ public class CircularBuffer<T> : IEnumerable<T>
 {
     private int _capacity;
     private readonly LinkedList<T> _list = new();
+    private readonly Func<T, bool> _isPinned;
 
     public int Count    => _list.Count;
     public int Capacity => _capacity;
 
-    public CircularBuffer(int capacity)
+    /// <summary>
+    /// Creates a buffer with the given capacity.
+    /// <paramref name="isPinned"/> is called to determine whether an item
+    /// should be skipped during eviction.  Defaults to <c>_ =&gt; false</c>
+    /// (no item is ever pinned) for non-<see cref="ClipboardItem"/> types.
+    /// </summary>
+    public CircularBuffer(int capacity, Func<T, bool>? isPinned = null)
     {
         if (capacity <= 0) throw new ArgumentOutOfRangeException(nameof(capacity));
-        _capacity = capacity;
+        _capacity  = capacity;
+        _isPinned  = isPinned ?? (_ => false);
     }
 
     /// <summary>Adds an item to the back (newest end) of the buffer.</summary>
@@ -55,7 +63,7 @@ public class CircularBuffer<T> : IEnumerable<T>
             LinkedListNode<T>? candidate = null;
             while (node is not null)
             {
-                if (node.Value is not Models.ClipboardItem { IsPinned: true })
+                if (!_isPinned(node.Value))
                 {
                     candidate = node;
                     break;
@@ -84,14 +92,14 @@ public class CircularBuffer<T> : IEnumerable<T>
 
     /// <summary>
     /// Evicts the oldest item in <see cref="_list"/> (front = oldest).
-    /// Skips pinned items when T is <see cref="ClipboardManager.Models.ClipboardItem"/>.
+    /// Skips pinned items based on the <c>isPinned</c> delegate supplied at construction.
     /// </summary>
     private void Evict()
     {
         var node = _list.First;
         while (node is not null)
         {
-            if (node.Value is Models.ClipboardItem { IsPinned: false })
+            if (!_isPinned(node.Value))
             {
                 _list.Remove(node);
                 return;

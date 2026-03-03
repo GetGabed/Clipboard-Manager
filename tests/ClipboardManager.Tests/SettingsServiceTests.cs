@@ -60,13 +60,12 @@ public class SettingsServiceTests : IDisposable
     public void SaveThenLoad_RoundTripsAllProperties()
     {
         var svc = new SettingsService(_tempDir);
-        svc.Current.MaxHistoryItems    = 42;
-        svc.Current.DarkMode           = true;
-        svc.Current.StartWithWindows   = true;
-        svc.Current.PlaySound          = true;
-        svc.Current.PersistToDisk      = false;
-        svc.Current.MonitorIntervalMs  = 500;
-        svc.Current.HistoryWindowWidth = 800;
+        svc.Current.MaxHistoryItems     = 42;
+        svc.Current.DarkMode            = true;
+        svc.Current.StartWithWindows    = true;
+        svc.Current.PlaySound           = true;
+        svc.Current.PersistToDisk       = false;
+        svc.Current.HistoryWindowWidth  = 800;
         svc.Current.HistoryWindowHeight = 700;
         svc.Save();
 
@@ -78,7 +77,6 @@ public class SettingsServiceTests : IDisposable
         Assert.True(svc2.Current.StartWithWindows);
         Assert.True(svc2.Current.PlaySound);
         Assert.False(svc2.Current.PersistToDisk);
-        Assert.Equal(500,   svc2.Current.MonitorIntervalMs);
         Assert.Equal(800.0, svc2.Current.HistoryWindowWidth);
         Assert.Equal(700.0, svc2.Current.HistoryWindowHeight);
     }

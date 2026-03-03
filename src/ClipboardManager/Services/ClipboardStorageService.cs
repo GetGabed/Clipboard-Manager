@@ -32,7 +32,7 @@ public class ClipboardStorageService : IClipboardStorageService
 
     public ClipboardStorageService(int capacity = 200)
     {
-        _buffer = new CircularBuffer<ClipboardItem>(capacity);
+        _buffer = new CircularBuffer<ClipboardItem>(capacity, item => item.IsPinned);
     }
 
     public void Add(ClipboardItem item)
@@ -87,6 +87,12 @@ public class ClipboardStorageService : IClipboardStorageService
     public void Resize(int newCapacity)
     {
         lock (_lock) { _buffer.Resize(newCapacity); }
+    }
+
+    /// <inheritdoc/>
+    public void SetPinned(ClipboardItem item, bool pinned)
+    {
+        lock (_lock) { item.IsPinned = pinned; }
     }
 
     public void SetAsCurrentClipboard(ClipboardItem item)

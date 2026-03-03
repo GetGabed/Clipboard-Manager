@@ -23,9 +23,6 @@ public class AppSettings
     [JsonProperty("persistToDisk")]
     public bool PersistToDisk { get; set; } = true;
 
-    [JsonProperty("monitorInterval")]
-    public int MonitorIntervalMs { get; set; } = 200;
-
     [JsonProperty("historyWindowWidth")]
     public double HistoryWindowWidth { get; set; } = 480;
 

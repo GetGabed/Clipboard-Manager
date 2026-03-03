@@ -26,4 +26,10 @@ public interface IClipboardStorageService
 
     /// <summary>Resizes the internal buffer to the new capacity, trimming oldest items if needed.</summary>
     void Resize(int newCapacity);
+
+    /// <summary>
+    /// Toggles the pinned state of <paramref name="item"/> while holding the storage lock,
+    /// preventing races between the UI thread and any background buffer operations.
+    /// </summary>
+    void SetPinned(ClipboardItem item, bool pinned);
 }
